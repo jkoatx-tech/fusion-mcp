@@ -18,7 +18,7 @@ Repository = "https://github.com/faust-machines/fusion360-mcp-server"
 Issues = "https://github.com/faust-machines/fusion360-mcp-server/issues"
 
 [project.scripts]
-fusion360-mcp = "fusion360_mcp:main"
+fusion360-mcp-server = "fusion360_mcp:main"
 
 [tool.setuptools]
 package-dir = { "" = "src" }

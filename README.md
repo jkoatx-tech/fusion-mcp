@@ -25,17 +25,9 @@ Two components:
 
 ## Installation
 
-### 1. Clone the repo
+### 1. Install the Fusion 360 Add-in
 
-```bash
-git clone https://github.com/faust-machines/fusion360-mcp-server.git
-cd fusion360-mcp-server
-uv sync
-```
-
-### 2. Install the Fusion 360 Add-in
-
-The add-in lives in the `Fusion360MCP/` directory at the repo root (or wherever you keep it). Copy it into Fusion's AddIns folder:
+Download the latest add-in from [Releases](https://github.com/faust-machines/fusion360-mcp-server/releases), or clone the repo and copy the `Fusion360MCP/` directory into Fusion's AddIns folder:
 
 **macOS:**
 ```bash
@@ -51,27 +43,14 @@ Then start it in Fusion: **Shift+S → Add-Ins → Fusion360MCP → Run**
 
 You should see `[MCP] Server listening on localhost:9876` in the TEXT COMMANDS window.
 
-### 3. Configure your MCP client
+### 2. Connect your MCP client
+
+The MCP server is published on [PyPI](https://pypi.org/project/fusion360-mcp-server/) — no need to clone this repo.
 
 #### Claude Code
 
-Add to `~/.claude.json`:
-
-```json
-{
-  "mcpServers": {
-    "fusion360": {
-      "type": "stdio",
-      "command": "uv",
-      "args": [
-        "run", "--directory",
-        "/absolute/path/to/fusion360-mcp-server",
-        "python", "-m", "fusion360_mcp",
-        "--mode", "socket"
-      ]
-    }
-  }
-}
+```bash
+claude mcp add fusion360 -- uvx fusion360-mcp-server --mode socket
 ```
 
 #### Other MCP clients
@@ -79,7 +58,7 @@ Add to `~/.claude.json`:
 The server runs over **stdio**, so any MCP-compatible client can launch it. The command is:
 
 ```
-uv run --directory /absolute/path/to/fusion360-mcp-server python -m fusion360_mcp --mode socket
+uvx fusion360-mcp-server --mode socket
 ```
 
 <details>
@@ -89,11 +68,9 @@ uv run --directory /absolute/path/to/fusion360-mcp-server python -m fusion360_mc
 {
   "mcpServers": {
     "fusion360": {
-      "command": "uv",
+      "command": "uvx",
       "args": [
-        "run", "--directory",
-        "/absolute/path/to/fusion360-mcp-server",
-        "python", "-m", "fusion360_mcp",
+        "fusion360-mcp-server",
         "--mode", "socket"
       ]
     }
@@ -102,7 +79,7 @@ uv run --directory /absolute/path/to/fusion360-mcp-server python -m fusion360_mc
 ```
 </details>
 
-### 4. Verify
+### 3. Verify
 
 Call the `ping` tool from your client. If it returns `{"pong": true}`, everything is connected.
 
