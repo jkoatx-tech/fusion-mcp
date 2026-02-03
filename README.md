@@ -27,16 +27,18 @@ Two components:
 
 ### 1. Install the Fusion 360 Add-in
 
-Download the latest add-in from [Releases](https://github.com/faust-machines/fusion360-mcp-server/releases), or clone the repo and copy the `Fusion360MCP/` directory into Fusion's AddIns folder:
-
-**macOS:**
+**Quick install (symlink for development):**
 ```bash
-cp -r Fusion360MCP ~/Library/Application\ Support/Autodesk/Autodesk\ Fusion\ 360/API/AddIns/
+./scripts/install-addon.sh
 ```
 
-**Windows (PowerShell):**
-```powershell
-Copy-Item -Recurse Fusion360MCP "$env:APPDATA\Autodesk\Autodesk Fusion 360\API\AddIns\"
+**Manual install:**
+```bash
+# macOS
+cp -r addon ~/Library/Application\ Support/Autodesk/Autodesk\ Fusion\ 360/API/AddIns/Fusion360MCP
+
+# Windows (PowerShell)
+Copy-Item -Recurse addon "$env:APPDATA\Autodesk\Autodesk Fusion 360\API\AddIns\Fusion360MCP"
 ```
 
 Then start it in Fusion: **Shift+S → Add-Ins → Fusion360MCP → Run**
