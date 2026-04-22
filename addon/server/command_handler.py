@@ -1054,106 +1054,86 @@ class CommandHandler:
                 "translation": [x, y, z]}
 
     def export_stl(self, body_name: str, file_path: str = None):
+        body = self._body_by_name(body_name)
+
         if file_path is None:
             desktop = os.path.join(os.path.expanduser("~"), "Desktop")
             file_path = os.path.join(desktop, f"{body_name}.stl")
 
         os.makedirs(os.path.dirname(file_path), exist_ok=True)
 
-        root = self._root()
         export_mgr = self._design().exportManager
+        occ = body.assemblyContext  # None if body is at root
 
-        # Root-level bodies can be exported directly
-        for i in range(root.bRepBodies.count):
-            b = root.bRepBodies.item(i)
-            if b.name == body_name:
-                stl_opts = export_mgr.createSTLExportOptions(b, file_path)
-                stl_opts.meshRefinement = (
-                    adsk.fusion.MeshRefinementSettings.MeshRefinementMedium)
-                export_mgr.execute(stl_opts)
-                return {"exported": True, "body": body_name,
-                        "file_path": file_path}
-
-        # Bodies inside components: export via occurrence, hiding siblings
-        for occ in root.allOccurrences:
-            comp = occ.component
-            found = False
-            for i in range(comp.bRepBodies.count):
-                if comp.bRepBodies.item(i).name == body_name:
-                    found = True
-                    break
-            if not found:
-                continue
-
-            hidden = []
-            for i in range(comp.bRepBodies.count):
-                sibling = comp.bRepBodies.item(i)
-                if sibling.name != body_name and sibling.isVisible:
-                    sibling.isVisible = False
-                    hidden.append(sibling)
-
-            try:
-                stl_opts = export_mgr.createSTLExportOptions(occ, file_path)
-                stl_opts.meshRefinement = (
-                    adsk.fusion.MeshRefinementSettings.MeshRefinementMedium)
-                export_mgr.execute(stl_opts)
-            finally:
-                for sibling in hidden:
-                    sibling.isVisible = True
-
+        if occ is None:
+            stl_opts = export_mgr.createSTLExportOptions(body, file_path)
+            stl_opts.meshRefinement = (
+                adsk.fusion.MeshRefinementSettings.MeshRefinementMedium)
+            export_mgr.execute(stl_opts)
             return {"exported": True, "body": body_name,
                     "file_path": file_path}
 
-        raise RuntimeError(f"Body '{body_name}' not found")
+        # Body lives in a component occurrence: hide siblings so the
+        # occurrence export only contains the target body. Identify
+        # siblings by entityToken, not name, to handle same-name bodies.
+        target_token = body.entityToken
+        hidden = []
+        for i in range(occ.bRepBodies.count):
+            sibling = occ.bRepBodies.item(i)
+            if sibling.entityToken != target_token and sibling.isVisible:
+                sibling.isVisible = False
+                hidden.append(sibling)
+
+        try:
+            stl_opts = export_mgr.createSTLExportOptions(occ, file_path)
+            stl_opts.meshRefinement = (
+                adsk.fusion.MeshRefinementSettings.MeshRefinementMedium)
+            export_mgr.execute(stl_opts)
+        finally:
+            for sibling in hidden:
+                sibling.isVisible = True
+
+        return {"exported": True, "body": body_name,
+                "file_path": file_path}
 
     def export_step(self, body_name: str, file_path: str = None):
+        body = self._body_by_name(body_name)
+
         if file_path is None:
             desktop = os.path.join(os.path.expanduser("~"), "Desktop")
             file_path = os.path.join(desktop, f"{body_name}.step")
 
         os.makedirs(os.path.dirname(file_path), exist_ok=True)
 
-        root = self._root()
         export_mgr = self._design().exportManager
+        occ = body.assemblyContext  # None if body is at root
 
-        # Root-level bodies
-        for i in range(root.bRepBodies.count):
-            b = root.bRepBodies.item(i)
-            if b.name == body_name:
-                step_opts = export_mgr.createSTEPExportOptions(file_path, b)
-                export_mgr.execute(step_opts)
-                return {"exported": True, "body": body_name,
-                        "file_path": file_path}
-
-        # Bodies inside components: export via occurrence, hiding siblings
-        for occ in root.allOccurrences:
-            comp = occ.component
-            found = False
-            for i in range(comp.bRepBodies.count):
-                if comp.bRepBodies.item(i).name == body_name:
-                    found = True
-                    break
-            if not found:
-                continue
-
-            hidden = []
-            for i in range(comp.bRepBodies.count):
-                sibling = comp.bRepBodies.item(i)
-                if sibling.name != body_name and sibling.isVisible:
-                    sibling.isVisible = False
-                    hidden.append(sibling)
-
-            try:
-                step_opts = export_mgr.createSTEPExportOptions(file_path, occ)
-                export_mgr.execute(step_opts)
-            finally:
-                for sibling in hidden:
-                    sibling.isVisible = True
-
+        if occ is None:
+            step_opts = export_mgr.createSTEPExportOptions(file_path, body)
+            export_mgr.execute(step_opts)
             return {"exported": True, "body": body_name,
                     "file_path": file_path}
 
-        raise RuntimeError(f"Body '{body_name}' not found")
+        # Body lives in a component occurrence: hide siblings so the
+        # occurrence export only contains the target body. Identify
+        # siblings by entityToken, not name, to handle same-name bodies.
+        target_token = body.entityToken
+        hidden = []
+        for i in range(occ.bRepBodies.count):
+            sibling = occ.bRepBodies.item(i)
+            if sibling.entityToken != target_token and sibling.isVisible:
+                sibling.isVisible = False
+                hidden.append(sibling)
+
+        try:
+            step_opts = export_mgr.createSTEPExportOptions(file_path, occ)
+            export_mgr.execute(step_opts)
+        finally:
+            for sibling in hidden:
+                sibling.isVisible = True
+
+        return {"exported": True, "body": body_name,
+                "file_path": file_path}
 
     def export_f3d(self, file_path: str = None):
         design = self._design()
