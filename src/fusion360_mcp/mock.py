@@ -134,12 +134,6 @@ def _export_stl(p: dict) -> dict:
     return {"body_name": name, "file_path": path}
 
 
-def _export_body_step(p: dict) -> dict:
-    name = p.get("body_name", "Body1")
-    path = p.get("file_path", f"~/Desktop/{name}.step")
-    return {"exported": True, "body": name, "file_path": path}
-
-
 def _boolean_operation(p: dict) -> dict:
     return {
         "target_body": p.get("target_body", "Body1"),
@@ -743,7 +737,6 @@ _DISPATCH: dict[str, Any] = {
     "rename_body": _rename_body,
     "move_body": _move_body,
     "export_stl": _export_stl,
-    "export_body_step": _export_body_step,
     "boolean_operation": _boolean_operation,
     "delete_all": _delete_all,
     "undo": _undo,

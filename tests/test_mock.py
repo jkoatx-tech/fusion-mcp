@@ -638,17 +638,6 @@ class TestMockRenameBody:
         assert result["new_name"] == "ShellTop"
 
 
-class TestMockExportBodyStep:
-    def test_export_body_step(self):
-        result = mock_command("export_body_step", {
-            "body_name": "ShellTop",
-            "file_path": "/tmp/ShellTop.step",
-        })
-        assert result["body"] == "ShellTop"
-        assert result["file_path"] == "/tmp/ShellTop.step"
-        assert result["exported"] is True
-
-
 class TestMockFallback:
     def test_unknown_command_returns_warning(self):
         result = mock_command("totally_unknown_command", {"x": 1})

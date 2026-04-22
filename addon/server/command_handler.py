@@ -83,7 +83,6 @@ class CommandHandler:
                 "rename_body":          self.rename_body,
                 "export_stl":           self.export_stl,
                 "export_step":          self.export_step,
-                "export_body_step":     self.export_body_step,
                 "export_f3d":           self.export_f3d,
                 "boolean_operation":    self.boolean_operation,
                 "delete_all":           self.delete_all,
@@ -1155,57 +1154,6 @@ class CommandHandler:
                     "file_path": file_path}
 
         raise RuntimeError(f"Body '{body_name}' not found")
-
-    def export_body_step(self, body_name: str, file_path: str = None):
-        """Export a single body as STEP, even if it's inside a component."""
-        body = self._body_by_name(body_name)
-
-        if file_path is None:
-            desktop = os.path.join(os.path.expanduser("~"), "Desktop")
-            file_path = os.path.join(desktop, f"{body_name}.step")
-
-        os.makedirs(os.path.dirname(file_path), exist_ok=True)
-
-        root = self._root()
-        design = self._design()
-        export_mgr = design.exportManager
-
-        # STEP export requires a Component, not a Body.
-        # Create a temp component, move the body there, export, move back.
-        src_occ = None
-        for occ in root.allOccurrences:
-            comp = occ.component
-            for i in range(comp.bRepBodies.count):
-                if comp.bRepBodies.item(i).name == body_name:
-                    src_occ = occ
-                    break
-            if src_occ:
-                break
-
-        tmp_occ = root.occurrences.addNewComponent(
-            adsk.core.Matrix3D.create())
-        tmp_occ.component.name = f"_tmp_export_{body_name}"
-
-        # Move body to temp component
-        body.moveToComponent(tmp_occ)
-
-        # Export
-        step_opts = export_mgr.createSTEPExportOptions(
-            file_path, tmp_occ.component)
-        export_mgr.execute(step_opts)
-
-        # Move body back
-        moved_body = tmp_occ.component.bRepBodies.item(0)
-        if src_occ:
-            moved_body.moveToComponent(src_occ)
-        else:
-            # Was in root — just delete temp component, body stays in root
-            pass
-
-        # Clean up temp component
-        tmp_occ.deleteMe()
-
-        return {"exported": True, "body": body_name, "file_path": file_path}
 
     def export_f3d(self, file_path: str = None):
         design = self._design()

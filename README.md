@@ -91,7 +91,7 @@ Call the `ping` tool from your client. If it returns `{"pong": true}`, everythin
 2. Stop the add-in in Fusion (Shift+S → Add-Ins → Fusion360MCP → Stop)
 3. Delete the add-in folder from Fusion's AddIns directory
 
-## Available Tools (84)
+## Available Tools (83)
 
 ### Scene & Query
 | Tool | Description |
@@ -220,9 +220,8 @@ Call the `ping` tool from your client. If it returns `{"pong": true}`, everythin
 ### Export
 | Tool | Description |
 |------|-------------|
-| `export_stl` | Export body as STL |
-| `export_step` | Export body as STEP |
-| `export_body_step` | Export a single body as STEP (works inside components) |
+| `export_stl` | Export body as STL (supports bodies inside components) |
+| `export_step` | Export body as STEP (supports bodies inside components) |
 | `export_f3d` | Export design as Fusion archive |
 
 ### CAM / Manufacturing
