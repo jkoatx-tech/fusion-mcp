@@ -279,6 +279,24 @@ def _export_f3d(p: dict) -> dict:
     return {"file_path": path}
 
 
+def _import_mesh(p: dict) -> dict:
+    path = p.get("file_path", "/tmp/mesh.stl")
+    units = p.get("units", "mm")
+    component = p.get("component_name") or "RootComponent"
+    return {
+        "imported": True,
+        "file_path": path,
+        "mesh_name": "MeshBody_mock",
+        "component": component,
+        "units": units,
+        "bounding_box": {
+            "min": [0.0, 0.0, 0.0],
+            "max": [10.0, 5.0, 2.0],
+            "size": [10.0, 5.0, 2.0],
+        },
+    }
+
+
 # ── parameter tools ───────────────────────────────────────────────────
 
 def _get_parameters(_p: dict) -> dict:
@@ -767,6 +785,7 @@ _DISPATCH: dict[str, Any] = {
     "list_components": _list_components,
     "export_step": _export_step,
     "export_f3d": _export_f3d,
+    "import_mesh": _import_mesh,
     "get_parameters": _get_parameters,
     "create_parameter": _create_parameter,
     "set_parameter": _set_parameter,

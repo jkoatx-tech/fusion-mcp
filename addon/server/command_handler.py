@@ -85,6 +85,7 @@ class CommandHandler:
                 "export_stl":           self.export_stl,
                 "export_step":          self.export_step,
                 "export_f3d":           self.export_f3d,
+                "import_mesh":          self.import_mesh,
                 "boolean_operation":    self.boolean_operation,
                 "delete_all":           self.delete_all,
                 "undo":                 self.undo,
@@ -1203,6 +1204,47 @@ class CommandHandler:
         export_mgr.execute(f3d_opts)
 
         return {"exported": True, "file_path": file_path}
+
+    def import_mesh(self, file_path: str, component_name: str = None,
+                    units: str = "mm"):
+        """Import mesh file (STL/OBJ/3MF) as mesh body. Values returned in cm."""
+        if not os.path.exists(file_path):
+            raise RuntimeError(f"Mesh file not found: {file_path}")
+
+        target = (self._component_by_name(component_name)
+                  if component_name else self._root())
+
+        unit_map = {
+            "mm": adsk.fusion.MeshUnits.MillimeterMeshUnit,
+            "cm": adsk.fusion.MeshUnits.CentimeterMeshUnit,
+            "m":  adsk.fusion.MeshUnits.MeterMeshUnit,
+            "in": adsk.fusion.MeshUnits.InchMeshUnit,
+            "ft": adsk.fusion.MeshUnits.FootMeshUnit,
+        }
+        if units not in unit_map:
+            raise RuntimeError(
+                f"Unknown units '{units}'. "
+                f"Expected one of: {sorted(unit_map)}")
+
+        mesh_body = target.meshBodies.addByFile(file_path, unit_map[units])
+
+        bb = mesh_body.boundingBox
+        return {
+            "imported": True,
+            "file_path": file_path,
+            "mesh_name": mesh_body.name,
+            "component": target.name,
+            "units": units,
+            "bounding_box": {
+                "min": [bb.minPoint.x, bb.minPoint.y, bb.minPoint.z],
+                "max": [bb.maxPoint.x, bb.maxPoint.y, bb.maxPoint.z],
+                "size": [
+                    bb.maxPoint.x - bb.minPoint.x,
+                    bb.maxPoint.y - bb.minPoint.y,
+                    bb.maxPoint.z - bb.minPoint.z,
+                ],
+            },
+        }
 
     def boolean_operation(self, target_body: str, tool_body: str,
                           operation: str = "join"):

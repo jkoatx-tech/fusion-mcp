@@ -78,6 +78,8 @@ def test_expected_tools_present():
         "create_component", "add_joint", "list_components",
         # export
         "export_step", "export_f3d",
+        # import
+        "import_mesh",
         # parameters
         "get_parameters", "create_parameter", "set_parameter", "delete_parameter",
         # sketch constraints & dimensions
