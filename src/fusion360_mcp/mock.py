@@ -297,6 +297,25 @@ def _import_mesh(p: dict) -> dict:
     }
 
 
+def _create_box_parametric(p: dict) -> dict:
+    return {
+        "created": True,
+        "body_name": p.get("body_name") or "BoxParametric_mock",
+        "feature_name": "Extrude_mock",
+        "sketch_name": "Sketch_mock",
+        "length": p.get("length", 1),
+        "width": p.get("width", 1),
+        "height": p.get("height", 1),
+        "origin": [
+            p.get("origin_x", 0),
+            p.get("origin_y", 0),
+            p.get("origin_z", 0),
+        ],
+        "plane": p.get("plane", "xy"),
+        "component": p.get("component_name") or "RootComponent",
+    }
+
+
 # ── parameter tools ───────────────────────────────────────────────────
 
 def _get_parameters(_p: dict) -> dict:
@@ -786,6 +805,7 @@ _DISPATCH: dict[str, Any] = {
     "export_step": _export_step,
     "export_f3d": _export_f3d,
     "import_mesh": _import_mesh,
+    "create_box_parametric": _create_box_parametric,
     "get_parameters": _get_parameters,
     "create_parameter": _create_parameter,
     "set_parameter": _set_parameter,
