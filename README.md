@@ -124,6 +124,10 @@ FUSION_MCP_HOST=192.168.1.42 uvx fusion360-mcp-server --mode socket
 
 **Security note:** the TCP socket has no authentication. Only expose it on a trusted LAN — never bind to `0.0.0.0` on a host reachable from the public internet.
 
+### Local-LLM setup (no cloud)
+
+The server is plain stdio MCP, so it works with a fully local agent — useful when part geometry shouldn't leave your machines. See [docs/local-llm.md](docs/local-llm.md) for a Hermes Agent + llama.cpp + Qwen 3.6 setup, hardware requirements, and how to trim the tool list to fit a small model's context window.
+
 ### 3. Verify
 
 Call the `ping` tool from your client. If it returns `{"pong": true}`, everything is connected.
