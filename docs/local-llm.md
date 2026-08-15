@@ -143,6 +143,59 @@ That set — enough for parametric box construction against an imported referenc
 
 `exclude` works too if you'd rather subtract; `include` is the safer default here because the tool list grows over time.
 
+## Running Hermes unattended
+
+Hermes is built to run 24/7 — cron triggers, webhooks, a desktop app that attaches to a backend running elsewhere. That's genuinely useful for CAD chores (nightly STEP exports, re-deriving a parametric family when a spec file changes), but there's a hard constraint specific to this stack:
+
+> **Fusion 360 is a GUI application. It cannot run on a headless server.** The add-in lives inside a running Fusion instance with a logged-in Autodesk session. No amount of agent infrastructure changes that.
+
+So the "put the agent on a VPS" pattern only works if you split the machines:
+
+| Component | Where it can live |
+|---|---|
+| Fusion + add-in | **A desktop that stays logged in.** Physical workstation or a always-on VM with a real session. Not a container. |
+| llama.cpp | Wherever the GPU is |
+| Hermes backend | Anywhere — VPS, the Fusion box, a Mac Mini |
+| Hermes desktop app | Your laptop, attached to the backend remotely |
+
+The MCP server itself is a short-lived subprocess Hermes spawns, so it lives wherever the backend does, and reaches Fusion over TCP via `FUSION_MCP_HOST`.
+
+A practical arrangement: Fusion on the workstation with `FUSION_MCP_HOST=0.0.0.0`, Hermes backend on a small always-on box, and the desktop app on your laptop pointed at that backend. Scheduled jobs then run whenever the workstation happens to be up — and fail cleanly with a connection error when it isn't, which is the correct behavior. Have the job call `ping` first and bail out rather than starting a modeling sequence it can't finish.
+
+### Attaching the desktop app to a remote backend
+
+The Hermes backend (`hermes serve`) listens on **port 9119** for the desktop app and web dashboard. In the app: **Settings → Gateway → Remote gateway**, then the server address and credentials.
+
+Binding the backend to anything other than loopback automatically engages its auth gate. Do not open 9119 to the internet to make this work — put both machines on a [Tailscale](https://tailscale.com) network and bind to the Tailscale address. That applies doubly here, because the same network is carrying the Fusion socket on 9876, which has **no authentication at all**.
+
+Note that `hermes serve` (the backend) and `hermes gateway run` (Telegram/Discord/Slack channels) are separate processes sharing `~/.hermes/`. You only need the former for desktop-app access.
+
+### Teach it the conventions with `/learn`
+
+Rather than repeating this server's quirks in every prompt, install them once as a skill. Hermes stores skills in `~/.hermes/skills/` and can author one from a source you point it at:
+
+```
+/learn https://github.com/jkoatx-tech/fusion-mcp/blob/main/README.md
+```
+
+This repo also ships a hand-written skill covering the failure modes a small model hits most often — centimeter units, one operation per call, verify-don't-assume. Install it with:
+
+```bash
+cp -r docs/skills/fusion360-mcp ~/.hermes/skills/
+```
+
+Then `/reload-mcp` (or restart the session). See [`docs/skills/fusion360-mcp/SKILL.md`](skills/fusion360-mcp/SKILL.md).
+
+### Scheduled and event-driven jobs
+
+Cron triggers and webhooks are configured from the desktop app. Things worth automating here:
+
+- Nightly `export` of a named body to STEP/STL into a synced folder.
+- A webhook that fires when a spec changes, then `set_parameter` + re-`export` to regenerate a part family.
+- A `ping` health check that tells you the workstation dropped off before you rely on it.
+
+Keep unattended jobs narrow and idempotent. An agent that fails halfway through a modeling sequence leaves a half-built design in the timeline, and an unattended run has nobody to notice — prefer jobs that read and export over jobs that model.
+
 ## What works well, what doesn't
 
 Works well:
