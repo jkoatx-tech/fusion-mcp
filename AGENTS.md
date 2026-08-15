@@ -2,7 +2,7 @@
 
 ## Overview
 
-This is an MCP server (80 tools) that connects AI coding agents to Autodesk Fusion 360 for CAD automation. It consists of two pieces:
+This is an MCP server (87 tools) that connects AI coding agents to Autodesk Fusion 360 for CAD automation. It consists of two pieces:
 
 1. **MCP Server** (this repo) — speaks MCP protocol over stdio, forwards commands to Fusion via TCP
 2. **Fusion 360 Add-in** — runs inside Fusion, executes commands on the main thread via CustomEvent bridge
@@ -16,7 +16,7 @@ Claude Code ──stdio──> MCP Server ──TCP :9876──> Fusion Add-in �
 
 The add-in uses a CustomEvent + work queue pattern to safely dispatch all Fusion API calls to the main thread. Socket threads submit work items and block on a per-item `threading.Event` until the main thread completes execution.
 
-## Available tools (80)
+## Available tools (87)
 
 ### Scene & Query
 | Tool | Description |
@@ -25,6 +25,7 @@ The add-in uses a CustomEvent + work queue pattern to safely dispatch all Fusion
 | `get_scene_info` | Design name, bodies, sketches, features, camera |
 | `get_object_info` | Detailed info about a named body or sketch |
 | `list_components` | List all components in the design |
+| `get_bounding_box` | Axis-aligned bounding box (min/max/size/center, cm) for a body or component |
 
 ### Sketching
 | Tool | Description |
@@ -43,10 +44,17 @@ The add-in uses a CustomEvent + work queue pattern to safely dispatch all Fusion
 | `extend_curve` | Extend to nearest intersection |
 | `project_geometry` | Project edges/bodies onto sketch plane |
 
+### Design Type Safety
+| Tool | Description |
+|------|-------------|
+| `get_design_type` | Check if design is in parametric or direct mode |
+| `set_design_type` | Switch design type (parametric/direct recovery) |
+
 ### Features
 | Tool | Description |
 |------|-------------|
 | `extrude` | Extrude a sketch profile |
+| `create_box_parametric` | History-based box (sketch + extrude); dimensions accept User Parameter expressions |
 | `revolve` | Revolve a profile around an axis |
 | `sweep` | Sweep a profile along a path |
 | `loft` | Loft between two or more profiles |
@@ -70,6 +78,7 @@ The add-in uses a CustomEvent + work queue pattern to safely dispatch all Fusion
 | Tool | Description |
 |------|-------------|
 | `move_body` | Translate a body by (x, y, z) |
+| `rename_body` | Rename a body (searches root and all components) |
 | `boolean_operation` | Join/cut/intersect two bodies |
 | `delete_all` | Clear the design |
 | `undo` | Undo last operation |
@@ -131,9 +140,11 @@ The add-in uses a CustomEvent + work queue pattern to safely dispatch all Fusion
 | `set_parameter` | Update a parameter value |
 | `delete_parameter` | Remove a parameter |
 
-### Export
+### Import & Export
 | Tool | Description |
 |------|-------------|
+| `import_mesh` | Import STL/OBJ/3MF as a mesh body (unit-aware) |
+| `export` | Unified dispatcher; infers format from file extension |
 | `export_stl` | Export body as STL |
 | `export_step` | Export body as STEP |
 | `export_f3d` | Export design as Fusion archive |

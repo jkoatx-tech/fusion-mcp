@@ -1,6 +1,6 @@
 # Fusion360 MCP Server
 
-> **Fork note** — This is a fork of [faust-machines/fusion360-mcp-server](https://github.com/faust-machines/fusion360-mcp-server) with four added tools oriented toward parametric box construction against imported reference meshes, plus cross-machine LAN support. Upstream credit for the architecture and 90 base tools goes to faust-machines. See [Fork additions](#fork-additions) below.
+> **Fork note** — This is a fork of [faust-machines/fusion360-mcp-server](https://github.com/faust-machines/fusion360-mcp-server) with four added tools oriented toward parametric box construction against imported reference meshes, plus cross-machine LAN support. Upstream credit for the architecture and 83 base tools goes to faust-machines. See [Fork additions](#fork-additions) below.
 
 > **Beta** — This project is under active development. APIs and tool behavior may change between releases. Use at your own discretion.
 
@@ -138,7 +138,7 @@ Call the `ping` tool from your client. If it returns `{"pong": true}`, everythin
 2. Stop the add-in in Fusion (Shift+S → Add-Ins → Fusion360MCP → Stop)
 3. Delete the add-in folder from Fusion's AddIns directory
 
-## Available Tools (83)
+## Available Tools (87)
 
 ### Scene & Query
 | Tool | Description |
@@ -147,6 +147,7 @@ Call the `ping` tool from your client. If it returns `{"pong": true}`, everythin
 | `get_scene_info` | Design name, bodies, sketches, features, camera |
 | `get_object_info` | Detailed info about a named body or sketch |
 | `list_components` | List all components in the design |
+| `get_bounding_box` | Axis-aligned bounding box (min/max/size/center in cm); unions bodies for components |
 
 ### Design Type Safety
 | Tool | Description |
@@ -175,6 +176,7 @@ Call the `ping` tool from your client. If it returns `{"pong": true}`, everythin
 | Tool | Description |
 |------|-------------|
 | `extrude` | Extrude a sketch profile |
+| `create_box_parametric` | History-based box (sketch + extrude); dimensions accept User Parameter expressions |
 | `revolve` | Revolve a profile around an axis |
 | `sweep` | Sweep a profile along a path |
 | `loft` | Loft between two or more profiles |
@@ -264,9 +266,11 @@ Call the `ping` tool from your client. If it returns `{"pong": true}`, everythin
 | `set_parameter` | Update a parameter value |
 | `delete_parameter` | Remove a parameter |
 
-### Export
+### Import & Export
 | Tool | Description |
 |------|-------------|
+| `import_mesh` | Import STL/OBJ/3MF as a mesh body (unit-aware: mm/cm/m/in/ft) |
+| `export` | Unified dispatcher around the three below; infers format from file extension |
 | `export_stl` | Export body as STL (supports bodies inside components) |
 | `export_step` | Export body as STEP (supports bodies inside components) |
 | `export_f3d` | Export design as Fusion archive |
@@ -300,7 +304,7 @@ Call the `ping` tool from your client. If it returns `{"pong": true}`, everythin
 
 ```bash
 uv sync --dev       # install deps
-uv run pytest -v    # run tests (171 tests)
+uv run pytest -v    # run tests (262 tests)
 uv run ruff check   # lint
 ```
 
