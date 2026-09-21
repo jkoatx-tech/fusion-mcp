@@ -113,6 +113,15 @@ whether images bleed to the edge or sit inside the gutter. Always set `width`/`h
 `aspect-ratio` so nothing reflows on load — layout shift during scroll is felt as jank even when the
 animation is perfect.
 
+Reserving space is necessary but not sufficient; two things quietly undo it:
+
+- **A centred wrapper inside a grid stage needs `width: 100%`.** With `margin-inline: auto`, the
+  auto margins beat `justify-items: stretch` and the box falls back to its content width — so the
+  whole scene widens the moment an image arrives, and every reserved box inside it grows with it.
+- **Content the script inserts after load shifts exactly like a late image.** Log lines, generated
+  list items, anything appended on `DOMContentLoaded`: it belongs in the markup, where it also
+  survives for screen readers and find-in-page. Let the script style it, not create it.
+
 ## Copy
 
 The page's words do more for "premium" than any animation. Keep theirs wherever it exists; when you

@@ -101,7 +101,7 @@ section { padding-block: var(--s-7); }
 /* Szenen */
 .scene { position: relative; height: var(--scene-length, 200vh); padding-block: 0; }
 .scene__stage { position: sticky; top: 0; height: 100dvh; overflow: hidden;
-                display: grid; place-items: center; }
+                display: grid; align-items: center; justify-items: stretch; }
 
 /* Szene 01 — Cutover */
 .cutover { width: 100%; }

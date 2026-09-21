@@ -34,6 +34,12 @@ across every asset in a set so they look related:
 > paper, #2F6BFF accent), abstract human figures without facial detail, one figure teaching two
 > others at a table, isometric view, generous negative space, no text, no logos.
 
+**Generate one probe first, and fetch it before you generate the set.** A generation service hands
+back URLs, and a locked-down environment may refuse to load them — the egress policy that blocks the
+CDN does not care that the job was already billed. One image tells you both what the style looks
+like and whether the file can actually reach the page; the set costs real money and is worth nothing
+if it stays on someone else's server.
+
 ### Paths, in order of preference
 
 1. **An image/video MCP connector, if this session has one.** Kling is the common case: call
@@ -60,6 +66,29 @@ sees, so the scene has to work as a still image.
 
 For a scrubbed scene (see `scroll-patterns.md` §9), keep the clip small and simple — scrubbing decodes
 constantly, and a heavy clip that plays smoothly can still scrub badly.
+
+## Deriving what the page actually ships
+
+A master is not a web asset. For each image, derive two widths at roughly twice the largest size it
+renders at, write WebP with a JPEG fallback, and record each variant's real pixel dimensions — those
+numbers go straight into `width`/`height` or the box's `aspect-ratio`, which is what keeps the page
+from jumping when the image lands.
+
+```html
+<div class="shot" style="--ar:1600/900">
+  <picture>
+    <source type="image/webp" sizes="100vw"
+            srcset="web/hero-800.webp 800w, web/hero-1600.webp 1600w">
+    <img src="web/hero-1600.jpg" srcset="web/hero-800.jpg 800w, web/hero-1600.jpg 1600w"
+         sizes="100vw" width="1600" height="900" loading="eager" fetchpriority="high"
+         alt="…">
+  </picture>
+</div>
+```
+
+The saving is not marginal: a set of four masters at 8.9 MB came out at 29 KB of delivered WebP,
+because most of a master's weight is resolution nobody sees. Hero eager with `fetchpriority="high"`,
+everything below the fold `loading="lazy"` and `decoding="async"`.
 
 ## Organising and checking
 

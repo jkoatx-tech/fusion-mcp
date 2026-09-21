@@ -14,6 +14,8 @@ Six passes, each aimed at a failure that is invisible in code:
                      large for a phone
   dead links         a destination that goes nowhere is the most annoying defect to find late
                      and the cheapest to prevent
+  layout shift       an image without reserved space pushes the text the reader is reading;
+                     felt as the page fighting them, and invisible in the source
   mid-scroll reload   browsers restore scroll position; state written only in a scroll handler
                      leaves the page half blank for anyone who refreshes
   reduced motion     the composed, still page must be complete, not stuck at its start state
@@ -40,6 +42,32 @@ VIEWPORTS = {
 
 # Cumulative opacity rather than the element's own: a scene that fades its whole stage hides its
 # children without any of them looking transparent.
+# Layout shift is the raster-asset defect: an image with no reserved space arrives and shoves
+# whatever the reader was reading. Scrolling does not count as user input for this API, so a
+# shift observed during the walk is one a real reader would feel.
+CLS_INIT = r"""
+window.__cls = { value: 0, worst: 0, source: null };
+try {
+  new PerformanceObserver(function (list) {
+    for (const entry of list.getEntries()) {
+      if (entry.hadRecentInput) continue;
+      window.__cls.value += entry.value;
+      if (entry.value > window.__cls.worst) {
+        window.__cls.worst = entry.value;
+        const node = entry.sources && entry.sources[0] && entry.sources[0].node;
+        if (node && node.tagName) {
+          let s = node.tagName.toLowerCase();
+          if (typeof node.className === 'string' && node.className.trim()) {
+            s += '.' + node.className.trim().split(/\s+/).slice(0, 2).join('.');
+          }
+          window.__cls.source = s;
+        }
+      }
+    }
+  }).observe({ type: 'layout-shift', buffered: true });
+} catch (e) {}
+"""
+
 LINK_JS = r"""
 () => {
   const dead = [];
@@ -176,6 +204,7 @@ def run_viewport(browser, url: str, name: str, size, frames: int, out: pathlib.P
     context = browser.new_context(viewport={"width": width, "height": height},
                                   device_scale_factor=1)
     page = context.new_page()
+    page.add_init_script(CLS_INIT)
     errors: list[str] = []
     missing: list[str] = []
 
@@ -241,6 +270,8 @@ def run_viewport(browser, url: str, name: str, size, frames: int, out: pathlib.P
                 "clientWidth": audit["clientWidth"], "offenders": audit["overflowing"],
             }
 
+    walk_shift = page.evaluate("() => window.__cls || {value: 0, worst: 0, source: null}")
+
     # Mid-scroll reload: the restore-position bug.
     reload_report = None
     if max_scroll > 0:
@@ -248,7 +279,13 @@ def run_viewport(browser, url: str, name: str, size, frames: int, out: pathlib.P
                       round(max_scroll * 0.5))
         page.wait_for_timeout(200)
         page.reload(wait_until="load")
-        page.wait_for_timeout(900)
+        # Wait for the images to actually arrive: measuring before they land would report a
+        # perfectly stable page, which is exactly the illusion a fast local server creates.
+        try:
+            page.wait_for_load_state("networkidle", timeout=8000)
+        except Exception:
+            pass
+        page.wait_for_timeout(600)
         audit = page.evaluate(AUDIT_JS)
         shot = shots / "reload-mid.png"
         page.screenshot(path=str(shot))
@@ -258,9 +295,35 @@ def run_viewport(browser, url: str, name: str, size, frames: int, out: pathlib.P
             "invisible": audit["invisible"],
         }
     result["reload"] = reload_report
+    context.close()
+
+    # Layout shift only shows up on a cold arrival deep in the page: walking down from the top
+    # lets lazy images load while still off-screen, where a shift rightly does not count, and a
+    # reload re-uses the cache so nothing arrives late at all. A reader following a deep link on
+    # a cold connection gets neither mercy — that is the case to measure.
+    cold = {"value": 0, "worst": 0, "source": None}
+    if max_scroll > 0:
+        cold_ctx = browser.new_context(viewport={"width": width, "height": height},
+                                       device_scale_factor=1)
+        cold_page = cold_ctx.new_page()
+        cold_page.add_init_script(CLS_INIT)
+        cold_page.goto(url, wait_until="domcontentloaded")
+        cold_page.evaluate("y => window.scrollTo({top: y, behavior: 'instant'})",
+                           round(max_scroll * 0.45))
+        try:
+            cold_page.wait_for_load_state("networkidle", timeout=10000)
+        except Exception:
+            pass
+        cold_page.wait_for_timeout(500)
+        cold = cold_page.evaluate("() => window.__cls || {value: 0, worst: 0, source: null}")
+        cold_ctx.close()
+
+    worse = max([walk_shift, cold], key=lambda c: c.get("value", 0))
+    result["layout_shift"] = dict(worse,
+                                  when="a cold arrival mid-page" if worse is cold
+                                  else "the scroll walk")
     result["errors"] = errors[:20]
     result["missing_assets"] = missing[:20]
-    context.close()
     return result
 
 
@@ -304,6 +367,18 @@ def report(results: dict) -> bool:
                   f"scrollWidth {o['scrollWidth']} > {o['clientWidth']}")
             for off in o["offenders"][:6]:
                 print(f"        {off['el']}  left={off['left']} right={off['right']}")
+        shift = vp.get("layout_shift") or {}
+        cls = shift.get("value", 0)
+        if cls > 0.1:
+            ok = False
+            print(f"  FAIL  layout shifted {cls:.3f} on {shift.get('when', 'the scroll walk')} "
+                  f"(worst single shift "
+                  f"{shift.get('worst', 0):.3f}"
+                  + (f", from {shift['source']}" if shift.get("source") else "")
+                  + ") — reserve the space with width/height or aspect-ratio")
+        elif cls > 0.05:
+            print(f"  WARN  layout shifted {cls:.3f} — under the 0.1 threshold, but a reader "
+                  f"notices text moving under their eyes")
         if vp["dead_links"]:
             ok = False
             print("  FAIL  links that go nowhere — every destination should be real, and a "
@@ -335,7 +410,7 @@ def report(results: dict) -> bool:
         elif rl:
             print(f"  ok    mid-scroll reload clean (restored to y={rl['restored_scroll']})")
         if not (vp["errors"] or hard_misses or vp["overflow"] or vp["invisible"]
-                or vp["dead_links"]):
+                or vp["dead_links"] or cls > 0.1):
             print("  ok    no errors, no overflow, nothing invisible")
 
     rm = results.get("reduced_motion")

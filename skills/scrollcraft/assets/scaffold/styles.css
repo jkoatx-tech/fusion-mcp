@@ -77,8 +77,11 @@ section { padding-block: var(--s-7); }
 /* Pinned scene: a tall section, a sticky viewport-sized stage.
  * --scene-length is the perceived speed control. More height = slower. */
 .scene { position: relative; height: var(--scene-length, 200vh); padding-block: 0; }
+/* Vertikal zentrieren, aber horizontal strecken: justify-items: center lässt das Kind auf
+ * seine Inhaltsbreite schrumpfen, und sobald ein Bild nachlädt, wächst die ganze Szene mit —
+ * ein Layout-Sprung, den der Leser mitten im Text spürt. */
 .scene__stage { position: sticky; top: 0; height: 100dvh; overflow: hidden;
-                display: grid; place-items: center; }
+                display: grid; align-items: center; justify-items: stretch; }
 
 /* Reveal — the ordinary case. Vary the treatment per content type; do not apply this to
  * everything on the page, or you have built the generic template this scaffold exists to avoid. */

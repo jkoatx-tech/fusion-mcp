@@ -62,7 +62,16 @@
             läuft das Altsystem schreibfähig mit.
           </p>
         </div>
-        <div class="log" data-log aria-live="off"></div>
+<div class="log" data-log aria-live="off">
+          <p class="log__line" data-p="0.04"><time>23:47</time><span>Freeze. Letzter Schreibvorgang im Altsystem.</span></p>
+          <p class="log__line" data-p="0.14"><time>23:58</time><span>Replikation eingeholt. Differenz 0 Datensätze.</span></p>
+          <p class="log__line" data-p="0.26"><time>00:19</time><span>Leseverkehr umgelegt, 10 %. Fehlerrate unverändert.</span></p>
+          <p class="log__line" data-p="0.38"><time>01:02</time><span>Leseverkehr 100 %. Altsystem nur noch schreibend.</span></p>
+          <p class="log__line" data-p="0.52"><time>02:14</time><span>Schreibverkehr umgelegt. Altsystem im Leerlauf.</span></p>
+          <p class="log__line" data-p="0.66"><time>03:05</time><span>Rollback-Fenster geschlossen. Ab hier nur vorwärts.</span></p>
+          <p class="log__line" data-p="0.80"><time>03:41</time><span>41 Dienste beendet, 6 Hosts heruntergefahren.</span></p>
+          <p class="log__line" data-p="0.93"><time>04:12</time><span>Übergabe an den Regelbetrieb. Keine Meldung offen.</span></p>
+        </div>
       </div>
     </div>
   </div>
@@ -212,25 +221,9 @@
 
   /* Exhibit 01 — Cutover -------------------------------------------------- */
   var START = 23 * 60 + 47, END = START + 265;   /* 23:47 → 04:12 */
-  var LOG = [
-    [0.04, '23:47', 'Freeze. Letzter Schreibvorgang im Altsystem.'],
-    [0.14, '23:58', 'Replikation eingeholt. Differenz 0 Datensätze.'],
-    [0.26, '00:19', 'Leseverkehr umgelegt, 10 %. Fehlerrate unverändert.'],
-    [0.38, '01:02', 'Leseverkehr 100 %. Altsystem nur noch schreibend.'],
-    [0.52, '02:14', 'Schreibverkehr umgelegt. Altsystem im Leerlauf.'],
-    [0.66, '03:05', 'Rollback-Fenster geschlossen. Ab hier nur vorwärts.'],
-    [0.80, '03:41', '41 Dienste beendet, 6 Hosts heruntergefahren.'],
-    [0.93, '04:12', 'Übergabe an den Regelbetrieb. Keine Meldung offen.']
-  ];
   var log = q('[data-log]');
-  LOG.forEach(function (row) {
-    var line = document.createElement('p');
-    line.className = 'log__line';
-    line.innerHTML = '<time>' + row[1] + '</time><span></span>';
-    line.lastChild.textContent = row[2];
-    log.appendChild(line);
-  });
-  var lines = log.children;
+  var lines = log.querySelectorAll('.log__line');
+  var MARKS = Array.prototype.map.call(lines, function (el) { return parseFloat(el.dataset.p); });
   var clock = q('[data-clock]'), oldFill = q('[data-old]'), newFill = q('[data-new]'),
       rbFill = q('[data-rb]'), oldVal = q('[data-old-val]'), newVal = q('[data-new-val]'),
       rbVal = q('[data-rb-val]');
@@ -252,8 +245,8 @@
     rbVal.textContent = rb > 0 ? 'offen · ' + Math.round(rb * 265) + ' min' : 'geschlossen';
 
     for (var i = 0; i < lines.length; i++) {
-      var passed = p >= LOG[i][0];
-      var newest = passed && (i === lines.length - 1 || p < LOG[i + 1][0]);
+      var passed = p >= MARKS[i];
+      var newest = passed && (i === lines.length - 1 || p < MARKS[i + 1]);
       lines[i].style.opacity = newest ? 1 : passed ? 0.45 : 0.12;
     }
     say(p, hh + ':' + mm + ' · ' + Math.round(shift * 100) + ' % umgelegt');

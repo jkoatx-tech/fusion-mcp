@@ -28,9 +28,17 @@ What it does, and why each check exists:
 | Invisible-element audit at every frame | content stuck at opacity 0 — the most common silent failure |
 | Horizontal overflow check | stage children escaping, oversized display type on phones |
 | Dead-link check | `href="#"`, empty and `javascript:void(0)` destinations |
+| Cold arrival mid-page | layout shift: an image or a late DOM insertion shoving what the reader is reading |
 | Mid-scroll reload | state that only updates in a scroll handler, so a reload leaves the page blank |
 | Reduced-motion pass | a composed page, or an empty one |
 | Console and network errors | missing assets, thrown exceptions mid-scene |
+
+One subtlety worth knowing, because it decides whether the number means anything: layout shift is
+only measured on a **cold arrival deep in the page**, in a fresh context. Walking down from the top
+lets lazy images load while they are still off-screen, where a shift costs the reader nothing and
+rightly does not count; a reload re-uses the cache, so nothing arrives late at all. Only the reader
+who follows a deep link on a cold connection gets the full force of it, and that is the case the
+script reproduces.
 
 The script reports mechanical breakage. It cannot tell you the page is boring.
 
@@ -68,6 +76,7 @@ Read them in order, as a reader would, and ask:
 | A shared readout shows the wrong scene | every scene writes on every frame; the last registered wins | guard the write with an active test, or give the target one writer |
 | A scene is frozen at its start value on phones | the stage stopped being sticky, so `pin()` has no length | bind the same callback through `track()` below the breakpoint |
 | Video scene blank on first pass | scrubbing before `readyState >= 2` | guard on readiness, and ship a poster |
+| Layout shifted on cold arrival | an image without reserved space, or content the script inserts after load | give images `width`/`height` or the box an `aspect-ratio`; put script-inserted content in the markup |
 | Links reported as dead | a placeholder survived, or a script-only control was built as a link | wire the real destination; a control that only runs script is a `<button>` |
 
 ## Before handing over
