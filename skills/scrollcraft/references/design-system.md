@@ -120,7 +120,9 @@ must write, write short, concrete and specific. A headline with a number in it b
 real quote with a real name beats three invented ones.
 
 Never rewrite copy they are attached to without asking — that is a whole revision round spent
-undoing a change nobody wanted.
+undoing a change nobody wanted. And when a passage is explicitly off limits, leave its surroundings
+alone too: a headline or caption you write next to it is still your voice next to theirs. Let it
+carry itself, or flag the addition as yours in the handover.
 
 ## Performance
 

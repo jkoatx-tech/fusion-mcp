@@ -60,6 +60,18 @@ at the end, **which assets are real**, the **signature move** nobody else's site
 page should feel calm versus intense. Ask about feeling and motive, not features — people answer
 "what should they believe by the end?" far better than "what sections do you want?".
 
+**Check first whether a show is wanted at all.** Some briefs are not asking for a page that
+performs; they are asking for an embarrassment to stop. "It's from 2011 and looks it", "it's
+unreadable on a phone", "the shop is doing fine, the site just isn't" — those want typography,
+speed, structure and a layout that works on a phone. There, the honest answer is a calm page and at
+most one bound scene, placed where it genuinely explains something, and sometimes none at all. Say
+so plainly and build the quiet page; a page that performs when nobody asked costs the client real
+money and buys them something they did not want. A skill that cannot decline itself is a salesman,
+not a tool — and the cheapest way to lose a client's trust is to answer a question they did not ask.
+
+Scale rather than switch off: the scroll score, the design decisions, the verification pass and the
+refusal to fabricate all still apply. What scales down is the number of bound scenes, not the care.
+
 **When there is nobody to ask** — an automated run, a brief handed over without a contact, a client
 who has gone quiet — do not stall and do not water the page down into something inoffensive. Answer
 the questions yourself from the brief, write each answer into the score as a decision rather than a

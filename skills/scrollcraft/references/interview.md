@@ -62,6 +62,23 @@ moves are usually a mechanism made visible, not an effect: every claim carrying 
 unlocks as you scroll; a rail of dated receipts; one product held in focus while the rest recede;
 a map filling in as a counter climbs.
 
+### Listen for the brief that does not want a show
+
+Somewhere in round one, most clients reveal which of two jobs they are hiring you for: winning
+attention they do not have yet, or removing an embarrassment they already have. The second sounds
+like "the shop is doing fine", "it's from 2011 and looks it", "I just don't want to cringe when
+someone opens it on their phone" — the goal is dignity, not growth.
+
+When you hear it, say so and adjust rather than quietly selling the full production. The page still
+gets a score, a considered type and colour system, real mobile behaviour and the verification pass;
+it just gets one bound scene instead of four, placed where it actually explains something, or none
+if nothing earns it. Recommending less than you could build is what makes the recommendation worth
+something, and a client who wanted a tidy page and got a performance will not ask you again.
+
+Two signals are usually decisive: whether the client is trying to reach people who do not know them
+yet, and whether the page is a destination people arrive at cold or one existing customers look up
+for a price and a phone number. The second case is a reference page. Reference pages want clarity.
+
 ## Round two — the feel
 
 Only ask these if round one left them genuinely open. Two or three is plenty.
@@ -98,6 +115,11 @@ Then keep building. A page resting on four recorded assumptions beats no page, a
 client something concrete to react to — people correct a draft far more readily than they answer a
 questionnaire. Close the handover by listing the decisions that were yours, ordered by how much the
 page would change if they are wrong. That list is the agenda for the first real conversation.
+
+When copy is declared untouchable, the restraint extends to what you put around it. Your own
+headline, caption or label next to a paragraph someone is attached to reads as a frame they did not
+choose, and a client protective enough to say "not one word" will notice. Either let the passage
+carry itself, or name the addition in the handover as your words and make it easy to delete.
 
 The one thing that does not become an assumption is a fact about the world: a number, a customer, a
 testimonial, a date. Those stay out until someone supplies them. Assuming a structure is design;
