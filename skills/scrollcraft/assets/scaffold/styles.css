@@ -1,0 +1,133 @@
+/* Scrollcraft scaffold tokens.
+ *
+ * Replace the palette and the two font families with the brand's. Keep the scales: the type steps
+ * have real jumps in them and the space scale is weighted towards the generous end, which is most
+ * of what makes a page read as considered rather than default.
+ */
+
+:root {
+  /* Field — both schemes live here so field inversion can interpolate between them. */
+  --paper-light: #F6F4EF;
+  --ink-light:   #12151C;
+  --paper-dark:  #0B0E14;
+  --ink-dark:    #EFECE4;
+  --accent:      #2F6BFF;   /* under ~5% of the pixels on the page */
+  --muted:       color-mix(in srgb, currentColor 55%, transparent);
+  --rule:        color-mix(in srgb, currentColor 14%, transparent);
+
+  --field: 0;               /* 0 = light, 1 = dark; drive this from a track() scene */
+  --paper: color-mix(in srgb, var(--paper-dark) calc(var(--field) * 100%), var(--paper-light));
+  --ink:   color-mix(in srgb, var(--ink-dark)   calc(var(--field) * 100%), var(--ink-light));
+
+  --display: "Instrument Serif", Georgia, serif;
+  --text: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  --step--1: clamp(.83rem, .8rem + .15vw, .9rem);
+  --step-0:  clamp(1rem, .96rem + .2vw, 1.1rem);
+  --step-1:  clamp(1.3rem, 1.2rem + .5vw, 1.6rem);
+  --step-2:  clamp(1.8rem, 1.5rem + 1.4vw, 2.6rem);
+  --step-3:  clamp(2.6rem, 1.9rem + 3.4vw, 4.4rem);
+  --step-4:  clamp(3.4rem, 1.8rem + 7vw, 8rem);
+
+  --s-1: .5rem;  --s-2: 1rem;   --s-3: 1.5rem; --s-4: 2.5rem;
+  --s-5: 4rem;   --s-6: 6.5rem; --s-7: 10rem;
+
+  --gutter: clamp(1rem, 4vw, 5rem);
+  --measure: 68ch;
+  --lead: 34ch;
+
+  --ease: cubic-bezier(.2, .8, .2, 1);
+  --ease-out: cubic-bezier(.4, 0, .2, 1);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font: var(--step-0)/1.55 var(--text);
+  font-synthesis-weight: none;
+  overflow-x: hidden;          /* a safety net, not a licence: fix the overflow at its source */
+}
+
+h1, h2, h3 { font-family: var(--display); font-weight: 400; line-height: 1.08;
+              letter-spacing: -.02em; margin: 0 0 var(--s-3); text-wrap: balance; }
+h1 { font-size: var(--step-4); }
+h2 { font-size: var(--step-3); }
+h3 { font-size: var(--step-1); font-family: var(--text); letter-spacing: 0; line-height: 1.3; }
+p { margin: 0 0 var(--s-3); max-width: var(--measure); text-wrap: pretty; }
+.lead { font-size: var(--step-1); max-width: var(--lead); line-height: 1.35; }
+a { color: inherit; text-underline-offset: .2em; }
+img, video, svg { max-width: 100%; height: auto; display: block; }
+
+.eyebrow { font-size: var(--step--1); letter-spacing: .12em; text-transform: uppercase;
+           color: var(--muted); margin: 0 0 var(--s-2); }
+.num { font-variant-numeric: tabular-nums; letter-spacing: -.03em; }
+
+/* Layout — a real 12-column grid, so things can sit off-centre on purpose. */
+.wrap { width: 100%; max-width: 1440px; margin-inline: auto; padding-inline: var(--gutter); }
+.grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: var(--s-4); }
+.col-main { grid-column: 2 / span 6; }
+.col-aside { grid-column: 9 / span 3; }
+section { padding-block: var(--s-7); }
+
+/* Pinned scene: a tall section, a sticky viewport-sized stage.
+ * --scene-length is the perceived speed control. More height = slower. */
+.scene { position: relative; height: var(--scene-length, 200vh); padding-block: 0; }
+.scene__stage { position: sticky; top: 0; height: 100dvh; overflow: hidden;
+                display: grid; place-items: center; }
+
+/* Reveal — the ordinary case. Vary the treatment per content type; do not apply this to
+ * everything on the page, or you have built the generic template this scaffold exists to avoid. */
+.reveal { opacity: 0; transform: translate3d(0, 18px, 0);
+          transition: opacity .55s var(--ease), transform .55s var(--ease); }
+.reveal.is-in { opacity: 1; transform: none; }
+
+/* Horizontal rail: pinned on desktop, a native swipe strip on phones. */
+.rail__track { display: flex; gap: var(--s-4); will-change: transform; }
+.rail__card { flex: 0 0 min(72vw, 40rem); }
+
+@media (max-width: 767px) {
+  /* A 12-column grid with a 2.5rem gap needs 440px of gap alone, so it overflows a phone long
+   * before its content does. Collapse the columns rather than trying to squeeze them. */
+  .grid { grid-template-columns: 1fr; gap: var(--s-3); }
+  .col-main, .col-aside { grid-column: 1 / -1; }
+
+  /* Pinned scenes become ordinary stacked sections. */
+  .scene { height: auto; }
+  /* place-items must be reset with the switch to block: justify-items: center resolves to
+   * justify-self: center on the child, and a block-level box with justify-self shrink-to-fits
+   * and centres — which overflows the viewport as soon as its content is wide. */
+  .scene__stage { position: static; height: auto; display: block; place-items: normal;
+                  overflow: visible; padding-block: var(--s-6); }
+
+  /* The rail becomes a native swipe strip — thumbs already know how to do this, and a hijacked
+   * horizontal pin fights the gesture. The scroll container is the track itself, because the
+   * stage above it clips. */
+  .rail__track { transform: none !important; will-change: auto;
+                 overflow-x: auto; overscroll-behavior-x: contain;
+                 scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch;
+                 padding-inline: var(--gutter); scrollbar-width: none; }
+  .rail__card { scroll-snap-align: center; flex-basis: 84vw; }
+
+  section { padding-block: var(--s-6); }
+}
+
+/* The composed, still version of the page. Everything visible, nothing moving. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+  html { scroll-behavior: auto; }
+  .reveal { opacity: 1; transform: none; }
+  .scene { height: auto; }
+  /* place-items must be reset with the switch to block: justify-items: center resolves to
+   * justify-self: center on the child, and a block-level box with justify-self shrink-to-fits
+   * and centres — which overflows the viewport as soon as its content is wide. */
+  .scene__stage { position: static; height: auto; display: block; place-items: normal;
+                  overflow: visible; padding-block: var(--s-6); }
+  .rail__track { transform: none !important; overflow-x: auto; padding-inline: var(--gutter); }
+}
+
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }

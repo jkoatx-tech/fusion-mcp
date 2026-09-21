@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scaffold — replace with the real title</title>
+<meta name="description" content="Replace with the one sentence the reader should believe.">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- Page-level progress. Cheap, and it tells the reader the page has a length. -->
+<div class="progress" aria-hidden="true"><span data-progress></span></div>
+
+<!-- HERO — one bound element, so the first flick of the wheel proves the page responds.
+     Not a full scrubbed scene: the reader has not agreed to care yet. -->
+<header class="wrap hero">
+  <p class="eyebrow">Replace: who this is</p>
+  <h1 data-hero-title>The claim, in the fewest words that still say something.</h1>
+  <p class="lead">One sentence of substance. A number, a date or a name beats an adjective.</p>
+</header>
+
+<!-- SCENE — pinned, one idea, progress-bound. --scene-length is the speed dial. -->
+<section class="scene" data-scene="reach" style="--scene-length: 200vh"
+         aria-label="Reach">
+  <div class="scene__stage">
+    <div class="wrap">
+      <p class="eyebrow">Exhibit A</p>
+      <p class="num" data-count style="font-size: var(--step-4); font-family: var(--display)">0</p>
+      <p class="lead">What the number is, and why a stranger should care about it.</p>
+    </div>
+  </div>
+</section>
+
+<!-- RAIL — a set with a natural order. Pinned on desktop, swipeable on phones. -->
+<section class="scene rail" data-scene="rail" style="--scene-length: 320vh" aria-label="Exhibits">
+  <div class="scene__stage">
+    <div class="rail__track" data-rail>
+      <article class="rail__card"><h3>Exhibit B</h3><p>Real evidence, not a feature.</p></article>
+      <article class="rail__card"><h3>Exhibit C</h3><p>Real evidence, not a feature.</p></article>
+      <article class="rail__card"><h3>Exhibit D</h3><p>Real evidence, not a feature.</p></article>
+    </div>
+  </div>
+</section>
+
+<!-- FIELD INVERSION — punctuation between chapters, two or three times per page at most. -->
+<section class="wrap grid" data-boundary>
+  <div class="col-main">
+    <h2>The chapter that follows the proof.</h2>
+    <p class="reveal" data-reveal>Body copy. Keep theirs where it exists.</p>
+  </div>
+  <aside class="col-aside reveal" data-reveal>
+    <p class="eyebrow">Margin note</p>
+    <p>Off-centre placement is most of what makes a page read as designed.</p>
+  </aside>
+</section>
+
+<footer class="wrap" style="padding-block: var(--s-6)">
+  <p><a href="#">Every destination must be real — replace this.</a></p>
+</footer>
+
+<style>
+  .progress { position: fixed; inset: 0 0 auto; height: 2px; z-index: 10; }
+  .progress span { display: block; height: 100%; width: 0; background: var(--accent);
+                   transform-origin: left; }
+  .hero { min-height: 92dvh; display: flex; flex-direction: column;
+          justify-content: flex-end; padding-block: var(--s-6); }
+  [data-hero-title] { max-width: 22ch; }
+</style>
+
+<script src="scroll.js"></script>
+<script>
+(function () {
+  var S = window.Scrollcraft;
+  var q = function (sel) { return document.querySelector(sel); };
+
+  /* Page progress indicator. */
+  var bar = q('[data-progress]');
+  S.onProgress(function (p) { bar.style.width = (p * 100).toFixed(2) + '%'; });
+
+  /* Hero: one bound element. Small — it is a promise, not the payoff. */
+  var title = q('[data-hero-title]');
+  S.track(q('.hero'), function (p) {
+    title.style.transform = 'translate3d(0,' + (p * -24).toFixed(1) + 'px,0)';
+    title.style.opacity = S.clamp(S.mapRange(p, 0.45, 0.8, 1, 0.15), 0.15, 1);
+  });
+
+  /* Pinned counter. Finish before p = 1 so the reader sees the result, not the digits. */
+  var out = q('[data-count]');
+  S.pin(q('[data-scene="reach"]'), function (p) {
+    var c = S.clamp(S.mapRange(p, 0, 0.85, 0, 1));
+    out.textContent = Math.round(S.lerp(0, 12437, c)).toLocaleString();
+  });
+
+  /* Horizontal rail. Skipped on phones, where CSS turns it into a swipe strip. */
+  var rail = q('[data-scene="rail"]');
+  var track = q('[data-rail]');
+  if (window.matchMedia('(min-width: 768px)').matches) {
+    S.pin(rail, function (p) {
+      var travel = Math.max(track.scrollWidth - window.innerWidth + 32, 0);
+      track.style.transform = 'translate3d(' + (-p * travel).toFixed(1) + 'px,0,0)';
+    });
+  }
+
+  /* Field inversion at a chapter boundary. */
+  S.track(q('[data-boundary]'), function (p) {
+    document.documentElement.style.setProperty('--field',
+      S.clamp(S.mapRange(p, 0.3, 0.55, 0, 1)).toFixed(3));
+  }, { reducedProgress: 1 });
+
+  /* Reveals, staggered. Use sparingly — never as the only mechanic on the page. */
+  S.revealAll(document.querySelectorAll('[data-reveal]'), { step: 60 });
+})();
+</script>
+</body>
+</html>
