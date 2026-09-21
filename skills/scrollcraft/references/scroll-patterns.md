@@ -30,12 +30,21 @@ const { pin, track, reveal, onProgress, clamp, lerp, mapRange } = Scrollcraft;
 
 pin(el, p => { ... });     // el is a tall section; p goes 0→1 over (el.height - viewport)
 track(el, p => { ... });   // p goes 0→1 as el crosses the viewport (enter bottom → exit top)
+track(el, fn, { startAtRest: true });   // rebase so the element's p at page load counts as 0
 reveal(el);                // adds .is-in once, when el is ~25% into view
 onProgress(p => { ... });  // whole-document progress, for a page-level indicator
 ```
 
 All callbacks run in one batched `requestAnimationFrame` pass, once on load, on every scroll, and on
-resize. Under `prefers-reduced-motion` each callback is invoked exactly once with its **end** value,
+resize. Two habits keep a page of scenes honest:
+
+- **An element already on screen at load is part-way through its crossing**, so a plain `track()`
+  hands it p ≈ 0.4 before the reader has touched anything, and its animation starts half-finished.
+  `{ startAtRest: true }` rebases that resting value to 0. Every hero needs it.
+- **Anything several scenes write to needs a single writer.** A shared readout, a shared CSS
+  variable, a shared class: every registered scene runs on every frame, including the ones far
+  off screen, so the last one registered silently wins. Either guard the write (`if (p > 0 && p <
+  1)`) or keep the scenes' values in one object and let one function apply them. Under `prefers-reduced-motion` each callback is invoked exactly once with its **end** value,
 so a scene composes itself into its final state and nothing moves.
 
 ## 1. Pinned scene with internal progress
@@ -70,6 +79,17 @@ pin(document.querySelector('[data-scene="reach"]'), p => {
 
 Keep the stage exactly `100vh` and `overflow: hidden`, or a child that animates outward will create
 horizontal scroll on phones — the single most common defect this pattern produces.
+
+On phones the stage usually stops being sticky, and then the section is no longer taller than the
+viewport, so `pin()` can never advance and the scene sits frozen at its start value — a counter
+stuck on 0, a log with no lines. Bind the same callback through `track()` there instead, so the
+scene still plays as the section passes:
+
+```js
+const phone = matchMedia('(max-width: 767px)').matches;
+const bind = phone ? track : pin;
+bind(scene, p => { ... });     // same callback, different source of progress
+```
 
 ## 2. Bound counter
 

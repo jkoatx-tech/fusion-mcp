@@ -6,6 +6,10 @@
  *                       containing a sticky, viewport-sized stage.
  *   track(el, p => {})  p: 0 → 1 as el crosses the viewport (0 = top edge entering from
  *                       below, 0.5 = centred, 1 = bottom edge leaving at the top).
+ *                       {startAtRest: true} rebases it so whatever p the element has at the
+ *                       top of the document counts as 0 — what a hero needs, since an element
+ *                       already on screen at load is part-way through its crossing and would
+ *                       otherwise start mid-animation before the reader has scrolled at all.
  *   reveal(el, opts)    adds a class once when el enters view. A trigger, not a binding.
  *   onProgress(fn)      whole-document progress, for page-level indicators.
  *
@@ -47,6 +51,9 @@ window.Scrollcraft = (function () {
       var r = s.el.getBoundingClientRect();
       s.top = r.top + y;
       s.height = r.height;
+      if (s.startAtRest) {
+        s.rest = clamp((vh - s.top) / Math.max(s.height + vh, 1));
+      }
       if (s.mode === 'pin' && s.height <= vh + 1 && !s.warned) {
         s.warned = true;
         console.warn('[scrollcraft] pinned section is not taller than the viewport, so its ' +
@@ -60,7 +67,8 @@ window.Scrollcraft = (function () {
     if (s.mode === 'pin') {
       return clamp((y - s.top) / Math.max(s.height - vh, 1));
     }
-    return clamp((y + vh - s.top) / Math.max(s.height + vh, 1));
+    var raw = clamp((y + vh - s.top) / Math.max(s.height + vh, 1));
+    return s.startAtRest ? clamp(mapRange(raw, s.rest, 1, 0, 1)) : raw;
   }
 
   function docProgress(y) {
@@ -92,7 +100,7 @@ window.Scrollcraft = (function () {
       fn(composed);
       return;
     }
-    scenes.push({ el: el, fn: fn, mode: mode });
+    scenes.push({ el: el, fn: fn, mode: mode, startAtRest: !!opts.startAtRest, rest: 0 });
     invalidate();
   }
 

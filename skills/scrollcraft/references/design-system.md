@@ -164,6 +164,10 @@ Two specific traps produce phone overflow that looks like nothing is wrong in th
 - **A 12-column grid with a large gap.** Eleven 2.5rem gaps need 440px before any content does, so
   the grid overflows a 390px viewport on its own. Collapse to `grid-template-columns: 1fr` on
   phones rather than trying to squeeze the columns.
+- **Column placement in a `style` attribute.** An inline `grid-column: 9 / span 3` beats the media
+  query that collapses the grid, and on a single-column grid it creates implicit columns off the
+  side of the viewport — horizontal overflow plus a reveal that never fires, because the element is
+  never actually in view. Placement belongs in a class.
 - **A grid stage that becomes a block.** `place-items: center` on the stage sets `justify-items`,
   which resolves to `justify-self: center` on the child — and a *block-level* box with
   `justify-self` shrink-to-fits and centres in current Chromium. A wide child then overflows the

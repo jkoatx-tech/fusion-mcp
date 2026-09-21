@@ -47,6 +47,9 @@ Read them in order, as a reader would, and ask:
 - **Do the phone frames hold up?** Display type that fits at 1440px routinely overflows at 390px.
 - **Is the rhythm there?** Flip through quickly: you should see contrast in density and field, not
   twelve versions of the same grey page.
+- **Is the first frame at rest?** Anything bound to scroll must sit at its start value before the
+  reader scrolls. A hero whose animation is already half-played on load reads as a glitch, and the
+  frame walk shows it immediately.
 - **Does the first frame earn the second?** If nothing in the first screen suggests scrolling will
   reward you, that is the highest-value fix on the page.
 
@@ -61,6 +64,8 @@ Read them in order, as a reader would, and ask:
 | Janky scrub | animating layout properties, or reading geometry per frame | transform/opacity only; cache geometry, recompute on resize |
 | Reduced-motion page empty | reveals rely on a class the observer never adds | final state must be the reduced-motion default in CSS |
 | Counter reads wrong at the end | progress never quite reaches 1 | clamp, and finish the count before p = 1 |
+| A shared readout shows the wrong scene | every scene writes on every frame; the last registered wins | guard the write with an active test, or give the target one writer |
+| A scene is frozen at its start value on phones | the stage stopped being sticky, so `pin()` has no length | bind the same callback through `track()` below the breakpoint |
 | Video scene blank on first pass | scrubbing before `readyState >= 2` | guard on readiness, and ship a poster |
 
 ## Before handing over
