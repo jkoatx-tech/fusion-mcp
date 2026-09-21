@@ -60,6 +60,14 @@ at the end, **which assets are real**, the **signature move** nobody else's site
 page should feel calm versus intense. Ask about feeling and motive, not features — people answer
 "what should they believe by the end?" far better than "what sections do you want?".
 
+**When there is nobody to ask** — an automated run, a brief handed over without a contact, a client
+who has gone quiet — do not stall and do not water the page down into something inoffensive. Answer
+the questions yourself from the brief, write each answer into the score as a decision rather than a
+fact, and keep building. A page built on four clearly recorded assumptions is worth far more than no
+page, and it gives the client something concrete to disagree with, which is how you get the real
+answer. Then say plainly in the handover which decisions were yours and which of them would change
+the page most if they turn out wrong.
+
 ## Phase 2 — Write the scroll score
 
 Before any HTML, write `SCROLL-SCORE.md` in the project. It is short — one block per scene — and it

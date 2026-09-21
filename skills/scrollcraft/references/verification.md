@@ -27,6 +27,7 @@ What it does, and why each check exists:
 | Frame walk at even scroll fractions, per viewport | scenes that never change, dead space, overlap, clipped type |
 | Invisible-element audit at every frame | content stuck at opacity 0 — the most common silent failure |
 | Horizontal overflow check | stage children escaping, oversized display type on phones |
+| Dead-link check | `href="#"`, empty and `javascript:void(0)` destinations |
 | Mid-scroll reload | state that only updates in a scroll handler, so a reload leaves the page blank |
 | Reduced-motion pass | a composed page, or an empty one |
 | Console and network errors | missing assets, thrown exceptions mid-scene |
@@ -67,6 +68,7 @@ Read them in order, as a reader would, and ask:
 | A shared readout shows the wrong scene | every scene writes on every frame; the last registered wins | guard the write with an active test, or give the target one writer |
 | A scene is frozen at its start value on phones | the stage stopped being sticky, so `pin()` has no length | bind the same callback through `track()` below the breakpoint |
 | Video scene blank on first pass | scrubbing before `readyState >= 2` | guard on readiness, and ship a poster |
+| Links reported as dead | a placeholder survived, or a script-only control was built as a link | wire the real destination; a control that only runs script is a `<button>` |
 
 ## Before handing over
 

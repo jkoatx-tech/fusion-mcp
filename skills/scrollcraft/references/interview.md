@@ -82,6 +82,27 @@ wastes a whole round.
 button that goes nowhere, or to the wrong page, is the most annoying possible defect to find later
 and it is free to prevent now.
 
+## When nobody answers
+
+Sometimes there is no human in the loop at all: an automated run, a brief forwarded without a
+contact, a client who stopped replying. The interview still does its work — you just answer it
+yourself.
+
+Take each question in turn and decide it from the brief, the existing site, and the industry. Record
+every answer in the score as a **decision**, not as a fact: "Reihenfolge: Proof first — angenommen,
+weil die Zielgruppe kalt ist" reads very differently from a claim that the client wanted that. Where
+a decision could plausibly have gone the other way, name the alternative in one clause, so a later
+reader sees the fork rather than only the road taken.
+
+Then keep building. A page resting on four recorded assumptions beats no page, and it gives the
+client something concrete to react to — people correct a draft far more readily than they answer a
+questionnaire. Close the handover by listing the decisions that were yours, ordered by how much the
+page would change if they are wrong. That list is the agenda for the first real conversation.
+
+The one thing that does not become an assumption is a fact about the world: a number, a customer, a
+testimonial, a date. Those stay out until someone supplies them. Assuming a structure is design;
+assuming a statistic is fabrication.
+
 ## The blank slate variant
 
 When there is no business, no assets and no copy — someone exploring, or building a portfolio piece

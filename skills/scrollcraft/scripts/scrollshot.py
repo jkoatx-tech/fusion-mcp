@@ -12,6 +12,8 @@ Six passes, each aimed at a failure that is invisible in code:
                      common silent failure in progress-bound scenes
   overflow           a stage child escaping and creating horizontal scroll, or display type too
                      large for a phone
+  dead links         a destination that goes nowhere is the most annoying defect to find late
+                     and the cheapest to prevent
   mid-scroll reload   browsers restore scroll position; state written only in a scroll handler
                      leaves the page half blank for anyone who refreshes
   reduced motion     the composed, still page must be complete, not stuck at its start state
@@ -38,6 +40,21 @@ VIEWPORTS = {
 
 # Cumulative opacity rather than the element's own: a scene that fades its whole stage hides its
 # children without any of them looking transparent.
+LINK_JS = r"""
+() => {
+  const dead = [];
+  for (const a of document.querySelectorAll('a[href]')) {
+    const href = a.getAttribute('href').trim();
+    const isDead = href === '#' || href === '' ||
+                   /^javascript:\s*(void\s*\(\s*0\s*\)|;)?$/i.test(href);
+    if (isDead) {
+      dead.push({ href: href || '(empty)', text: (a.textContent || '').trim().slice(0, 50) });
+    }
+  }
+  return dead.slice(0, 15);
+}
+"""
+
 AUDIT_JS = r"""
 () => {
   const describe = (el) => {
@@ -181,6 +198,7 @@ def run_viewport(browser, url: str, name: str, size, frames: int, out: pathlib.P
 
     max_scroll = page.evaluate(
         "() => Math.max(document.documentElement.scrollHeight - innerHeight, 0)")
+    dead_links = page.evaluate(LINK_JS)
     result = {
         "viewport": name,
         "size": [width, height],
@@ -192,6 +210,7 @@ def run_viewport(browser, url: str, name: str, size, frames: int, out: pathlib.P
         "overflow": None,
         "errors": [],
         "missing_assets": [],
+        "dead_links": dead_links,
     }
 
     shots = out / name
@@ -285,6 +304,12 @@ def report(results: dict) -> bool:
                   f"scrollWidth {o['scrollWidth']} > {o['clientWidth']}")
             for off in o["offenders"][:6]:
                 print(f"        {off['el']}  left={off['left']} right={off['right']}")
+        if vp["dead_links"]:
+            ok = False
+            print("  FAIL  links that go nowhere — every destination should be real, and a "
+                  "control that only runs script belongs in a <button>:")
+            for d in vp["dead_links"][:5]:
+                print(f'        href="{d["href"]}"  {d["text"]!r}')
         if vp["invisible"]:
             ok = False
             seen = set()
@@ -309,7 +334,8 @@ def report(results: dict) -> bool:
                   f"a scroll handler; run one update pass on load")
         elif rl:
             print(f"  ok    mid-scroll reload clean (restored to y={rl['restored_scroll']})")
-        if not (vp["errors"] or hard_misses or vp["overflow"] or vp["invisible"]):
+        if not (vp["errors"] or hard_misses or vp["overflow"] or vp["invisible"]
+                or vp["dead_links"]):
             print("  ok    no errors, no overflow, nothing invisible")
 
     rm = results.get("reduced_motion")
