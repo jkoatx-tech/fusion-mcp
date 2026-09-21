@@ -1,0 +1,201 @@
+/* HALBWERT — Studio für Systemrückbau.
+ * Register: technisch-dokumentarisch. Mono für alles Gemessene, Grotesk für Behauptungen. */
+
+:root {
+  --paper-light: #F2F1ED;
+  --ink-light:   #14161A;
+  --paper-dark:  #0B0D10;
+  --ink-dark:    #E8E6E0;
+  --accent:      #D9531E;
+
+  --field: 0;
+  --paper: color-mix(in srgb, var(--paper-dark) calc(var(--field) * 100%), var(--paper-light));
+  --ink:   color-mix(in srgb, var(--ink-dark)   calc(var(--field) * 100%), var(--ink-light));
+  --muted: color-mix(in srgb, currentColor 52%, transparent);
+  --faint: color-mix(in srgb, currentColor 30%, transparent);
+  --rule:  color-mix(in srgb, currentColor 16%, transparent);
+
+  --display: "Helvetica Neue", Helvetica, Arial, system-ui, sans-serif;
+  --text: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Roboto Mono", Menlo, monospace;
+
+  --step--2: .72rem;
+  --step--1: clamp(.78rem, .75rem + .12vw, .84rem);
+  --step-0:  clamp(1rem, .96rem + .2vw, 1.1rem);
+  --step-1:  clamp(1.25rem, 1.15rem + .45vw, 1.55rem);
+  --step-2:  clamp(1.7rem, 1.4rem + 1.3vw, 2.5rem);
+  --step-3:  clamp(2.4rem, 1.8rem + 3vw, 4rem);
+  --step-4:  clamp(2.9rem, 1.7rem + 5.4vw, 6.5rem);
+
+  --s-1: .5rem;  --s-2: 1rem;   --s-3: 1.5rem; --s-4: 2.5rem;
+  --s-5: 4rem;   --s-6: 6.5rem; --s-7: 10rem;
+
+  --gutter: clamp(1rem, 4vw, 4.5rem);
+  --measure: 62ch;
+  --ease: cubic-bezier(.2, .8, .2, 1);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+/* Die Instrumentenleiste liegt fix über dem Inhalt, also braucht jedes Sprungziel den Platz
+ * darunter — sonst landet eine Überschrift hinter der Leiste. */
+html { -webkit-text-size-adjust: 100%; scroll-padding-top: 4.5rem; }
+[id] { scroll-margin-top: 4.5rem; }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font: var(--step-0)/1.55 var(--text);
+  overflow-x: hidden;
+}
+
+h1, h2 { font-family: var(--display); font-weight: 700; line-height: 1.02;
+         letter-spacing: -.035em; margin: 0 0 var(--s-3); text-wrap: balance; }
+h1 { font-size: var(--step-4); max-width: 17ch; }
+h2 { font-size: var(--step-3); max-width: 20ch; }
+h3 { font-size: var(--step-1); font-weight: 600; letter-spacing: -.01em;
+     line-height: 1.25; margin: 0 0 var(--s-2); }
+p { margin: 0 0 var(--s-3); max-width: var(--measure); text-wrap: pretty; }
+.lead { font-size: var(--step-1); max-width: 40ch; line-height: 1.4; }
+a { color: inherit; text-underline-offset: .25em; text-decoration-thickness: 1px; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+/* Alles Gemessene ist mono und tabellarisch — das trägt hier den ganzen Ton. */
+.mono { font-family: var(--mono); font-variant-numeric: tabular-nums;
+        font-size: var(--step--1); letter-spacing: -.01em; }
+.label { font-family: var(--mono); font-size: var(--step--2); letter-spacing: .14em;
+         text-transform: uppercase; color: var(--muted); margin: 0 0 var(--s-2); }
+.num { font-family: var(--mono); font-variant-numeric: tabular-nums; letter-spacing: -.04em; }
+
+.wrap { width: 100%; max-width: 1400px; margin-inline: auto; padding-inline: var(--gutter); }
+.grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: var(--s-4); }
+section { padding-block: var(--s-7); }
+
+/* Instrumentenleiste: Marke links, Szene mittig, laufende Messung rechts.
+ * Sie macht aus der Seite ein Messgerät statt einer Broschüre. */
+.instrument { position: fixed; inset: 0 0 auto; z-index: 20; background: var(--paper);
+              border-bottom: 1px solid var(--rule); }
+.instrument__row { display: flex; align-items: center; gap: var(--s-3);
+                   padding: .55rem var(--gutter); }
+.instrument__mark { font-family: var(--display); font-weight: 700; letter-spacing: .02em;
+                    font-size: var(--step--1); }
+.instrument__scene { color: var(--muted); flex: 1; }
+.instrument__read { color: var(--accent); white-space: nowrap; }
+.instrument__bar { height: 1px; background: var(--accent); width: 0; }
+
+.stamp { font-family: var(--mono); font-size: var(--step--2); letter-spacing: .08em;
+         color: var(--muted); border-block: 1px solid var(--rule); max-width: none;
+         padding: .5rem var(--gutter); margin: 2.6rem 0 0; }
+
+/* Hero */
+.hero { padding-block: var(--s-5) var(--s-4); min-height: 82dvh;
+        display: flex; flex-direction: column; justify-content: center; }
+.hero__systems { list-style: none; padding: 0; margin: var(--s-4) 0 0;
+                 display: flex; flex-wrap: wrap; gap: .4rem 1.2rem; max-width: 74ch; }
+.hero__systems li { font-family: var(--mono); font-size: var(--step--1);
+                    color: var(--muted); position: relative; }
+.hero__systems li::after { content: ""; position: absolute; left: 0; right: 0; top: 52%;
+                           height: 1px; background: var(--accent); transform: scaleX(var(--off, 0));
+                           transform-origin: left; }
+
+/* Szenen */
+.scene { position: relative; height: var(--scene-length, 200vh); padding-block: 0; }
+.scene__stage { position: sticky; top: 0; height: 100dvh; overflow: hidden;
+                display: grid; place-items: center; }
+
+/* Szene 01 — Cutover */
+.cutover { width: 100%; }
+.cutover__head { display: flex; align-items: baseline; gap: var(--s-3);
+                 border-bottom: 1px solid var(--rule); padding-bottom: var(--s-2); }
+.cutover__clock { font-family: var(--mono); font-variant-numeric: tabular-nums;
+                  font-size: var(--step-3); letter-spacing: -.05em; line-height: 1; }
+.cutover__body { display: grid; grid-template-columns: 1.15fr .85fr; gap: var(--s-5);
+                 margin-top: var(--s-4); }
+.meter { margin-bottom: var(--s-3); }
+.meter__top { display: flex; justify-content: space-between; align-items: baseline;
+              margin-bottom: .35rem; }
+.meter__track { height: 10px; background: color-mix(in srgb, currentColor 10%, transparent); }
+.meter__fill { height: 100%; background: var(--ink); width: 0; }
+.meter--new .meter__fill { background: var(--accent); }
+.meter--rollback .meter__track { height: 4px; }
+.meter--rollback .meter__fill { background: var(--faint); }
+.log { font-family: var(--mono); font-size: var(--step--1); line-height: 1.75;
+       border-left: 1px solid var(--rule); padding-left: var(--s-3);
+       display: flex; flex-direction: column; gap: .15rem; }
+.log__line { display: grid; grid-template-columns: 4.6em 1fr; gap: .8rem;
+             opacity: .12; transition: opacity .18s linear; }
+.log__line time { color: var(--accent); }
+
+/* Szene 02 — Rückstand */
+.tally { display: grid; grid-template-columns: 1fr 1fr 1.45fr; gap: var(--s-5);
+         width: 100%; align-items: end; }
+.tally > :last-child .tally__value { font-size: var(--step-4); }
+.tally > :last-child .tally__note { max-width: 32ch; }
+.tally__value { font-family: var(--display); font-weight: 700; font-size: var(--step-3);
+                letter-spacing: -.045em; font-variant-numeric: tabular-nums; line-height: 1; }
+.tally__unit { font-size: .5em; letter-spacing: -.01em; }
+.tally__note { color: var(--muted); font-size: var(--step--1); margin-top: var(--s-2);
+               max-width: 26ch; }
+
+/* Szene 03 — Methode */
+.rail__track { display: flex; gap: var(--s-4); will-change: transform; align-items: stretch; }
+.rail__card { flex: 0 0 min(64vw, 33rem); border-top: 1px solid var(--ink);
+              padding-top: var(--s-2); display: flex; flex-direction: column; }
+.rail__step { color: var(--accent); }
+.rail__meta { margin-top: auto; padding-top: var(--s-3); color: var(--muted);
+              border-top: 1px solid var(--rule); }
+
+/* Szene 04 — Grenzen */
+.limits { display: grid; gap: var(--s-4); grid-column: 2 / span 6; }
+/* Spaltenplatzierung gehört in eine Klasse, nicht ins style-Attribut: ein Inline-Wert schlägt
+ * die Media Query, und grid-column: 9 auf einem einspaltigen Raster erzeugt eine implizite
+ * Spalte außerhalb des Viewports — Overflow und ein Reveal, das nie auslöst. */
+.col-aside { grid-column: 9 / span 3; }
+.limit { border-top: 1px solid var(--rule); padding-top: var(--s-2); }
+.limit p { margin: 0; color: var(--muted); }
+
+.reveal { opacity: 0; transform: translate3d(0, 14px, 0);
+          transition: opacity .5s var(--ease), transform .5s var(--ease); }
+.reveal.is-in { opacity: 1; transform: none; }
+
+/* Kontakt */
+.cta { display: inline-block; border: 1px solid currentColor; padding: .8rem 1.4rem;
+       text-decoration: none; font-family: var(--mono); font-size: var(--step--1);
+       transition: background .2s var(--ease), color .2s var(--ease); }
+.cta:hover { background: var(--ink); color: var(--paper); }
+footer { border-top: 1px solid var(--rule); padding-block: var(--s-5) var(--s-6); }
+
+@media (max-width: 900px) {
+  .cutover__body { grid-template-columns: 1fr; gap: var(--s-4); }
+  .log { max-height: 34vh; overflow: hidden; }
+}
+
+@media (max-width: 767px) {
+  .grid { grid-template-columns: 1fr; gap: var(--s-3); }
+  .limits, .col-aside { grid-column: 1 / -1; }
+  .scene { height: auto; }
+  /* place-items muss mit dem Wechsel auf block zurückgesetzt werden: justify-items: center
+   * wird zu justify-self: center am Kind, und ein Block-Level-Kind mit justify-self
+   * schrumpft auf Inhaltsbreite und zentriert — das überläuft das Viewport. */
+  .scene__stage { position: static; height: auto; display: block; place-items: normal;
+                  overflow: visible; padding-block: var(--s-6); }
+  .tally { grid-template-columns: 1fr; gap: var(--s-4); }
+  .rail__track { transform: none !important; will-change: auto;
+                 overflow-x: auto; overscroll-behavior-x: contain;
+                 scroll-snap-type: x mandatory; padding-inline: var(--gutter);
+                 scrollbar-width: none; }
+  .rail__card { scroll-snap-align: start; flex-basis: 82vw; }
+  .log { max-height: none; }
+  section { padding-block: var(--s-6); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+  .reveal { opacity: 1; transform: none; }
+  .scene { height: auto; }
+  .scene__stage { position: static; height: auto; display: block; place-items: normal;
+                  overflow: visible; padding-block: var(--s-6); }
+  .rail__track { transform: none !important; overflow-x: auto; padding-inline: var(--gutter); }
+  .log__line { opacity: 1 !important; }
+  .hero__systems li::after { transform: scaleX(1); }
+}

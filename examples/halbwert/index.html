@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HALBWERT — Studio für Systemrückbau</title>
+<meta name="description" content="Wir schalten Systeme ab, die niemand mehr abschalten will. Fiktive Demo-Seite.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' fill='%230B0D10'/><rect x='3' y='7' width='10' height='2' fill='%23D9531E'/></svg>">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="instrument">
+  <div class="instrument__row mono">
+    <span class="instrument__mark">HALBWERT</span>
+    <span class="instrument__scene" data-scene-label>Studio für Systemrückbau</span>
+    <span class="instrument__read" data-readout>bereit</span>
+  </div>
+  <div class="instrument__bar" data-progress></div>
+</div>
+
+<p class="stamp">Musterakte · fiktives Studio, erfundene Zahlen und Namen · gebaut als Demo für die Scrollcraft-Skill</p>
+
+<header class="wrap hero" data-section="Start" data-read="41 Systeme im Bestand">
+  <p class="label">Studio für Systemrückbau · seit 2019 · Karlsruhe</p>
+  <h1>Wir schalten Systeme ab, die niemand mehr abschalten will.</h1>
+  <p class="lead">Vierzehn Stilllegungen, keine ungeplante Ausfallminute. Wie das geht, steht
+    weiter unten — mit Uhrzeiten.</p>
+  <ul class="hero__systems" data-systems>
+    <li>AS/400 Warenwirtschaft</li><li>Oracle Forms 6i</li><li>Lotus Notes</li>
+    <li>VB6 Disposition</li><li>Cobol Abrechnung</li><li>Access Lager</li>
+    <li>SAP R/3 4.6C</li><li>Delphi Kassensystem</li><li>Perl Nachtlauf</li>
+    <li>Sybase Archiv</li><li>Excel Schattenbuchhaltung</li><li>FTP-Schnittstelle 1998</li>
+  </ul>
+</header>
+
+<!-- Signature Move: die Cutover-Nacht läuft unter der Hand des Lesers ab. -->
+<section class="scene" data-scene="cutover" style="--scene-length: 260vh"
+         data-section="Exhibit 01 — Cutover" aria-label="Cutover">
+  <div class="scene__stage">
+    <div class="wrap cutover">
+      <div class="cutover__head">
+        <span class="cutover__clock num" data-clock>23:47</span>
+        <span class="label" style="margin:0">Nacht auf den 14. März · Warenwirtschaft, 22 Jahre alt</span>
+      </div>
+      <div class="cutover__body">
+        <div>
+          <div class="meter meter--old">
+            <div class="meter__top mono"><span>Altsystem · Verkehr</span><span data-old-val>100 %</span></div>
+            <div class="meter__track"><div class="meter__fill" data-old></div></div>
+          </div>
+          <div class="meter meter--new">
+            <div class="meter__top mono"><span>Neues System · Verkehr</span><span data-new-val>0 %</span></div>
+            <div class="meter__track"><div class="meter__fill" data-new></div></div>
+          </div>
+          <div class="meter meter--rollback">
+            <div class="meter__top mono"><span>Rollback-Fenster</span><span data-rb-val>offen · 265 min</span></div>
+            <div class="meter__track"><div class="meter__fill" data-rb></div></div>
+          </div>
+          <p class="mono" style="color:var(--muted);margin-top:var(--s-4);max-width:46ch">
+            Gemessen wird der Anteil produktiver Anfragen. Solange das Rollback-Fenster offen ist,
+            läuft das Altsystem schreibfähig mit.
+          </p>
+        </div>
+        <div class="log" data-log aria-live="off"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div data-boundary aria-hidden="true" style="height:1px"></div>
+
+<section class="scene" data-scene="tally" style="--scene-length: 180vh"
+         data-section="Exhibit 02 — Rückstand" aria-label="Was übrig bleibt">
+  <div class="scene__stage">
+    <div class="wrap">
+      <p class="label">Was nach vierzehn Stilllegungen übrig blieb</p>
+      <div class="tally">
+        <div>
+          <p class="tally__value"><span data-t1>0</span><span class="tally__unit"> Mio. Zeilen</span></p>
+          <p class="tally__note">Quellcode aus dem Betrieb genommen. Gezählt ohne Testcode.</p>
+        </div>
+        <div>
+          <p class="tally__value"><span data-t2>0</span><span class="tally__unit"> Server</span></p>
+          <p class="tally__note">Physisch abgeschaltet, nicht virtualisiert weiterbetrieben.</p>
+        </div>
+        <div>
+          <p class="tally__value"><span data-t3>0</span><span class="tally__unit"> Mio. € / Jahr</span></p>
+          <p class="tally__note">Wegfallende Betriebs- und Lizenzkosten, Beispielwerte.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="scene rail" data-scene="rail" style="--scene-length: 320vh"
+         data-section="Methode" aria-label="Methode">
+  <div class="scene__stage">
+    <div class="rail__track" data-rail>
+      <article class="rail__card">
+        <p class="label rail__step">Schritt 01</p>
+        <h3>Inventur</h3>
+        <p>Wir lesen mit, bevor wir etwas anfassen: jeder Aufruf, jeder Nachtlauf, jede
+          Schnittstelle, die seit Jahren niemand mehr erwähnt.</p>
+        <p class="rail__meta mono">Dauer 4–8 Wochen · Abbruch, wenn der Verkehr nicht vollständig
+          protokollierbar ist</p>
+      </article>
+      <article class="rail__card">
+        <p class="label rail__step">Schritt 02</p>
+        <h3>Schattenbetrieb</h3>
+        <p>Das neue System läuft mit, ohne dass jemand es merkt. Jede Abweichung zum Altsystem
+          wird gezählt, nicht geschätzt.</p>
+        <p class="rail__meta mono">Dauer 6–12 Wochen · Abbruch bei Abweichung über 0,01 %</p>
+      </article>
+      <article class="rail__card">
+        <p class="label rail__step">Schritt 03</p>
+        <h3>Cutover</h3>
+        <p>Eine Nacht, ein Protokoll, ein Rollback-Fenster mit Uhrzeit. Bis es zufällt, ist jeder
+          Schritt umkehrbar.</p>
+        <p class="rail__meta mono">Dauer eine Nacht · Abbruch bis 03:05, danach vorwärts</p>
+      </article>
+      <article class="rail__card">
+        <p class="label rail__step">Schritt 04</p>
+        <h3>Rückbau</h3>
+        <p>Abschalten ist nicht Vergessen: Archiv, Nachweispflichten und Zugänge werden
+          dokumentiert übergeben, dann gehen die Lichter aus.</p>
+        <p class="rail__meta mono">Dauer 2–4 Wochen · Abschluss mit Übergabeprotokoll</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<div data-boundary-back aria-hidden="true" style="height:1px"></div>
+
+<section class="wrap grid" data-section="Grenzen" data-read="3 Ausschlusskriterien"
+         aria-label="Was wir nicht tun">
+  <div class="limits">
+    <h2>Drei Dinge, die wir nicht tun.</h2>
+    <div class="limit reveal" data-reveal>
+      <h3>Wir bauen kein neues System.</h3>
+      <p>Wir schalten ab. Wenn der Ersatz noch nicht steht, sind wir zu früh da.</p>
+    </div>
+    <div class="limit reveal" data-reveal>
+      <h3>Wir migrieren keine Daten ohne Abgleich.</h3>
+      <p>Eine Migration, deren Ergebnis niemand zählt, ist eine Hoffnung.</p>
+    </div>
+    <div class="limit reveal" data-reveal>
+      <h3>Wir arbeiten nicht ohne Rollback.</h3>
+      <p>Ein Cutover ohne Rückweg ist kein Plan, sondern ein Termin.</p>
+    </div>
+  </div>
+  <aside class="col-aside reveal" data-reveal>
+    <p class="label">Randnotiz</p>
+    <p class="mono" style="color:var(--muted)">Die meisten Anfragen, die wir ablehnen, kommen ein
+      Jahr später wieder — dann mit fertigem Ersatzsystem.</p>
+  </aside>
+</section>
+
+<section class="wrap" id="kontakt" data-section="Kontakt" data-read="45 min · ohne Angebot">
+  <h2>Erstgespräch, 45 Minuten, ohne Angebot am Ende.</h2>
+  <p class="lead">Bringen Sie mit, was Sie über das System noch wissen. Der Rest ist unsere
+    Arbeit.</p>
+  <p><a class="cta" href="mailto:kontakt@halbwert.example">kontakt@halbwert.example</a></p>
+</section>
+
+<footer class="wrap">
+  <p class="mono" style="color:var(--muted);max-width:70ch">
+    HALBWERT ist ein erfundenes Studio. Alle Zahlen, Termine, Systemnamen und die Adresse auf
+    dieser Seite sind Platzhalter ohne Beleg. Die Seite entstand als Live-Test der
+    Scrollcraft-Skill.
+  </p>
+</footer>
+
+<script src="scroll.js"></script>
+<script>
+(function () {
+  var S = window.Scrollcraft;
+  var q = function (s, r) { return (r || document).querySelector(s); };
+  var phone = window.matchMedia('(max-width: 767px)').matches;
+  /* Auf schmalen Viewports sind die Szenen nicht mehr gepinnt, also kann pin() keinen Fortschritt
+   * liefern. track() bindet dieselben Callbacks an den Durchlauf durch das Viewport. */
+  var bind = phone ? S.track : S.pin;
+  var fmt = function (n) { return n.toLocaleString('de-DE'); };
+  /* Ein geteiltes Anzeigeelement braucht einen Aktiv-Test. Ohne ihn schreibt jede registrierte
+   * Szene bei jedem Frame hinein — auch die, die noch gar nicht im Bild ist — und die zuletzt
+   * registrierte gewinnt. */
+  var say = function (p, text) { if (p > 0 && p < 1) readout.textContent = text; };
+
+  /* Instrumentenleiste ---------------------------------------------------- */
+  var bar = q('[data-progress]'), label = q('[data-scene-label]'), readout = q('[data-readout]');
+  S.onProgress(function (p) { bar.style.width = (p * 100).toFixed(2) + '%'; });
+  document.querySelectorAll('[data-section]').forEach(function (el) {
+    S.track(el, function (p) {
+      if (p > 0.18 && p < 0.88) {
+        label.textContent = el.dataset.section;
+        if (el.dataset.read) readout.textContent = el.dataset.read;
+      }
+    });
+  });
+
+  /* Hero: die Systemliste erlischt beim ersten Scrollen ------------------- */
+  var systems = q('[data-systems]').children;
+  S.track(q('.hero'), function (p) {
+    var lit = 0;
+    for (var i = 0; i < systems.length; i++) {
+      var local = S.clamp(S.mapRange(p, 0.12 + i * 0.045, 0.2 + i * 0.045, 0, 1));
+      systems[i].style.setProperty('--off', local.toFixed(3));
+      if (local < 1) lit++;
+    }
+    say(p, lit + ' von ' + systems.length + ' Systemen in Betrieb');
+  }, { startAtRest: true, reducedProgress: 1 });
+
+  /* Exhibit 01 — Cutover -------------------------------------------------- */
+  var START = 23 * 60 + 47, END = START + 265;   /* 23:47 → 04:12 */
+  var LOG = [
+    [0.04, '23:47', 'Freeze. Letzter Schreibvorgang im Altsystem.'],
+    [0.14, '23:58', 'Replikation eingeholt. Differenz 0 Datensätze.'],
+    [0.26, '00:19', 'Leseverkehr umgelegt, 10 %. Fehlerrate unverändert.'],
+    [0.38, '01:02', 'Leseverkehr 100 %. Altsystem nur noch schreibend.'],
+    [0.52, '02:14', 'Schreibverkehr umgelegt. Altsystem im Leerlauf.'],
+    [0.66, '03:05', 'Rollback-Fenster geschlossen. Ab hier nur vorwärts.'],
+    [0.80, '03:41', '41 Dienste beendet, 6 Hosts heruntergefahren.'],
+    [0.93, '04:12', 'Übergabe an den Regelbetrieb. Keine Meldung offen.']
+  ];
+  var log = q('[data-log]');
+  LOG.forEach(function (row) {
+    var line = document.createElement('p');
+    line.className = 'log__line';
+    line.innerHTML = '<time>' + row[1] + '</time><span></span>';
+    line.lastChild.textContent = row[2];
+    log.appendChild(line);
+  });
+  var lines = log.children;
+  var clock = q('[data-clock]'), oldFill = q('[data-old]'), newFill = q('[data-new]'),
+      rbFill = q('[data-rb]'), oldVal = q('[data-old-val]'), newVal = q('[data-new-val]'),
+      rbVal = q('[data-rb-val]');
+
+  bind(q('[data-scene="cutover"]'), function (p) {
+    var minute = Math.round(S.lerp(START, END, p)) % 1440;
+    var hh = String(Math.floor(minute / 60)).padStart(2, '0');
+    var mm = String(minute % 60).padStart(2, '0');
+    clock.textContent = hh + ':' + mm;
+
+    var shift = S.clamp(S.mapRange(p, 0.25, 0.62, 0, 1));
+    oldFill.style.width = ((1 - shift) * 100).toFixed(1) + '%';
+    newFill.style.width = (shift * 100).toFixed(1) + '%';
+    oldVal.textContent = Math.round((1 - shift) * 100) + ' %';
+    newVal.textContent = Math.round(shift * 100) + ' %';
+
+    var rb = S.clamp(S.mapRange(p, 0.35, 0.70, 1, 0));
+    rbFill.style.width = (rb * 100).toFixed(1) + '%';
+    rbVal.textContent = rb > 0 ? 'offen · ' + Math.round(rb * 265) + ' min' : 'geschlossen';
+
+    for (var i = 0; i < lines.length; i++) {
+      var passed = p >= LOG[i][0];
+      var newest = passed && (i === lines.length - 1 || p < LOG[i + 1][0]);
+      lines[i].style.opacity = newest ? 1 : passed ? 0.45 : 0.12;
+    }
+    say(p, hh + ':' + mm + ' · ' + Math.round(shift * 100) + ' % umgelegt');
+  });
+
+  /* Feldwechsel: dunkel ab Exhibit 02, zurück auf Papier zum ruhigen Schlusskapitel.
+   * Beide Grenzen schreiben in dieselbe Variable, also rechnet ein Schreiber aus beiden
+   * Eingängen — sonst überschreibt die zuletzt registrierte Szene bei p = 1 dauerhaft. */
+  var field = { on: 0, off: 0 };
+  var applyField = function () {
+    document.documentElement.style.setProperty('--field',
+      S.clamp(field.on - field.off).toFixed(3));
+  };
+  S.track(q('[data-boundary]'), function (p) {
+    field.on = S.clamp(S.mapRange(p, 0.42, 0.58, 0, 1)); applyField();
+  }, { reducedProgress: 0 });
+  S.track(q('[data-boundary-back]'), function (p) {
+    field.off = S.clamp(S.mapRange(p, 0.42, 0.58, 0, 1)); applyField();
+  }, { reducedProgress: 0 });
+
+  /* Exhibit 02 — Rückstand ------------------------------------------------ */
+  var t1 = q('[data-t1]'), t2 = q('[data-t2]'), t3 = q('[data-t3]');
+  bind(q('[data-scene="tally"]'), function (p) {
+    var c = S.clamp(S.mapRange(p, phone ? 0.1 : 0, phone ? 0.6 : 0.85, 0, 1));
+    t1.textContent = (S.lerp(0, 2.4, c)).toFixed(1).replace('.', ',');
+    t2.textContent = fmt(Math.round(S.lerp(0, 318, c)));
+    t3.textContent = (S.lerp(0, 1.9, c)).toFixed(1).replace('.', ',');
+    say(p, fmt(Math.round(S.lerp(0, 318, c))) + ' Server abgeschaltet');
+  });
+
+  /* Methode — Rail (auf dem Telefon übernimmt CSS den Swipe-Strip) --------- */
+  if (!phone) {
+    var track = q('[data-rail]');
+    S.pin(q('[data-scene="rail"]'), function (p) {
+      var travel = Math.max(track.scrollWidth - window.innerWidth + 64, 0);
+      track.style.transform = 'translate3d(' + (-p * travel).toFixed(1) + 'px,0,0)';
+      say(p, 'Schritt ' + Math.min(4, Math.floor(p * 4) + 1) + ' von 4');
+    });
+  }
+
+  S.revealAll(document.querySelectorAll('[data-reveal]'), { step: 70 });
+})();
+</script></body></html>

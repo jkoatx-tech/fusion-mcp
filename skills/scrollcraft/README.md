@@ -47,6 +47,13 @@ pass fails, so it can gate a handover.
 It finds a Chromium automatically (`--browser` overrides), which matters when the installed
 Playwright version does not match the browser build already on the machine.
 
+## Eine fertige Seite zum Ansehen
+
+`examples/halbwert/` (im selben Repository, nicht in diesem Ordner, damit eine Kopie der Skill
+schlank bleibt) ist eine vollständige Seite, mit dieser Skill gebaut: sechs Szenen, ein
+ausgeführter Scroll-Score, und der Regressionsfall für die Engine. Das Studio darin ist erfunden
+und weist das selbst aus.
+
 ## The scaffold
 
 `assets/scaffold/` is a working page, not a snippet: `scroll.js` is a ~130-line progress-bound
