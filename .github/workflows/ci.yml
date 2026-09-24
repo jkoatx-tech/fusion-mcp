@@ -33,3 +33,26 @@ jobs:
 
       - name: Test
         run: uv run pytest -v
+
+  jev-mcp:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: jev-mcp
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v4
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Install dependencies
+        run: uv sync --dev
+
+      - name: Lint
+        run: uv run ruff check src/ tests/
+
+      - name: Test
+        run: uv run pytest -v

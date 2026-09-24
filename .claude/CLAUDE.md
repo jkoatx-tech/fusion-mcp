@@ -48,3 +48,15 @@ uv run ruff check  # lint
 - `ping` is the health check — it never touches the Fusion API
 - Every tool has annotations (`readOnlyHint`, `destructiveHint`, `idempotentHint`)
 - Every tool has a mock handler so `--mode mock` works without Fusion running
+
+## jev-mcp (sub-project)
+
+`jev-mcp/` is a separate, self-contained MCP server (own `pyproject.toml` and `uv.lock`) that exposes TypeSafe Jev, a decision model returning typed, calibrated answers, as Claude Code tools (`jev_check`, `jev_classify`, `jev_score`, `jev_ask`, `jev_list_models`). It does not depend on the Fusion server.
+
+```bash
+cd jev-mcp && uv sync --dev && uv run pytest -q && uv run ruff check src tests
+```
+
+- Uses the official `typesafe-sdk`; the API key comes from `TYPESAFE_API_KEY`, never commit it
+- `--mode mock` works without a key
+- Setup for Claude Code: see `jev-mcp/README.md`
