@@ -128,6 +128,7 @@ destructive tools. Before the tool runs, Jev answers one yes/no question:
 |---|---|
 | `delete_all` | Did the user explicitly ask to delete, clear or reset the entire design? |
 | `delete_parameter` | Did the user explicitly ask to delete the parameter named in `tool_input.name`? |
+| `undo` | Did the user ask to undo, revert or roll back the last operation? |
 
 The parameter name reaches Jev only as data in the state and is never
 inserted into the question, so the caller cannot rewrite the question.
@@ -143,10 +144,14 @@ The guard only restricts and never grants permission:
 |---|---|---|
 | ≥ 0.9 (`--allow-above`) | none | normal permission flow (your settings apply) |
 | between the thresholds | `ask` | you confirm in Claude Code |
-| < 0.2 (`--deny-below`) | `deny` | call blocked; the reason goes to Claude |
+| < 0.2 (`--deny-below`) | `deny` | call blocked; the reason goes to Claude (`undo`: `ask` instead) |
 | error / no key / no user messages | `ask` | fail safe: you decide |
 
-Register it in `~/.claude/settings.json`. The matcher catches both tools
+`undo` is never blocked outright. It is Claude's normal way to fix its own
+last step, so when Jev is confident the user did not ask for it, the guard
+still only asks you to confirm (`on_no: "ask"` in the policy).
+
+Register it in `~/.claude/settings.json`. The matcher catches these tools
 under any server name (e.g. `mcp__fusion360__delete_parameter`):
 
 ```json
@@ -154,7 +159,7 @@ under any server name (e.g. `mcp__fusion360__delete_parameter`):
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "mcp__.*__(delete_all|delete_parameter)",
+        "matcher": "mcp__.*__(delete_all|delete_parameter|undo)",
         "hooks": [
           {
             "type": "command",
