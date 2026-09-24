@@ -81,6 +81,7 @@ def test_keeps_only_last_messages():
 def test_policy_matches_any_server_prefix():
     assert policy_for("mcp__fusion360__delete_all")[0] == "delete_all"
     assert policy_for("mcp__fusion__delete_all")[0] == "delete_all"
+    assert policy_for("mcp__fusion360__delete_parameter")[0] == "delete_parameter"
     assert policy_for("mcp__fusion360__undo") is None
 
 
@@ -149,3 +150,41 @@ def test_cli_invalid_input_asks():
     assert result.exit_code == 0
     assert json.loads(result.output)["hookSpecificOutput"][
         "permissionDecision"] == "ask"
+
+
+# ── delete_parameter ─────────────────────────────────────────────────
+
+
+def test_every_policy_is_complete():
+    from jev_mcp.guard import POLICIES
+
+    assert set(POLICIES) == {"delete_all", "delete_parameter"}
+    for policy in POLICIES.values():
+        assert policy["action"] and policy["deny_reason"]
+        assert policy["question"]["type"] == "noul"
+
+
+def test_delete_parameter_name_stays_in_state(tmp_path):
+    from jev_mcp.guard import POLICIES
+
+    t = write_transcript(tmp_path, [user("Lösch den Parameter flange_gap")])
+    backend = FakeBackend(p_yes=0.95)
+    hook_input = hook(t, tool="mcp__fusion360__delete_parameter")
+    hook_input["tool_input"] = {"name": "flange_gap"}
+    assert decide(hook_input, backend) is None
+
+    state, questions = backend.calls[0]
+    assert state["tool_input"] == {"name": "flange_gap"}
+    assert questions == {"requested": POLICIES["delete_parameter"]["question"]}
+    assert "flange_gap" not in json.dumps(questions)
+
+
+def test_delete_parameter_deny_reason(tmp_path):
+    t = write_transcript(tmp_path, [user("Set width to 30 mm")])
+    hook_input = hook(t, tool="mcp__fusion360__delete_parameter")
+    hook_input["tool_input"] = {"name": "width"}
+    out = decide(hook_input, FakeBackend(p_yes=0.02))
+    spec = out["hookSpecificOutput"]
+    assert spec["permissionDecision"] == "deny"
+    assert "delete this parameter" in spec["permissionDecisionReason"]
+    assert "delete_parameter" in spec["permissionDecisionReason"]

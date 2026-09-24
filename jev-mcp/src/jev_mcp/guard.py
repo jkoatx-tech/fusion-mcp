@@ -1,10 +1,10 @@
 """
 Claude Code PreToolUse hook: let Jev check destructive Fusion tools.
 
-Before ``delete_all`` runs, Jev judges whether the user explicitly asked to
-clear the whole design.  The state Jev sees is built from the *user's own*
-messages in the session transcript, so Claude cannot talk its way past the
-check.
+Before a destructive Fusion tool (``delete_all``, ``delete_parameter``) runs,
+Jev judges whether the user explicitly asked for exactly that.  The state Jev
+sees is built from the *user's own* messages in the session transcript, so
+Claude cannot talk its way past the check.
 
 The guard only ever restricts, it never grants permission:
 
@@ -13,7 +13,7 @@ The guard only ever restricts, it never grants permission:
 - Jev is confident the user did not ask    → ``deny`` (reason goes to Claude)
 
 Register it in ``~/.claude/settings.json`` (see README), matching
-``mcp__.*__delete_all``.
+``mcp__.*__(delete_all|delete_parameter)``.
 """
 
 import json
@@ -54,6 +54,36 @@ POLICIES: dict[str, dict] = {
                 ),
             },
         },
+        "deny_reason": "the user did not ask to clear the whole design",
+    },
+    "delete_parameter": {
+        "action": (
+            "delete_parameter: removes the user parameter named in "
+            "tool_input.name from the open Fusion 360 design. Features and "
+            "expressions that reference it lose their driving value."
+        ),
+        # The parameter name stays in the state (tool_input), never in the
+        # instructions, so the caller cannot rewrite the question.
+        "question": {
+            "type": "noul",
+            "instructions": (
+                "Did the user explicitly ask to delete the parameter named in "
+                "tool_input.name?"
+            ),
+            "criteria": {
+                "true": (
+                    "The user asked to delete or remove this parameter, by "
+                    "its name or unambiguously (e.g. 'delete the width "
+                    "parameter', 'remove all user parameters')."
+                ),
+                "false": (
+                    "The user asked to change, rename or keep the parameter, "
+                    "meant a different parameter, or never mentioned "
+                    "deleting it."
+                ),
+            },
+        },
+        "deny_reason": "the user did not ask to delete this parameter",
     },
 }
 
@@ -167,9 +197,8 @@ async def evaluate(
     if p_yes < deny_below:
         return _decision(
             "deny",
-            f"Jev guard: the user did not ask to clear the whole design "
-            f"(p={p_yes:.2f}). Do not call {short}; ask the user or use a "
-            f"targeted operation instead.",
+            f"Jev guard: {policy['deny_reason']} (p={p_yes:.2f}). Do not "
+            f"call {short}; ask the user or use a targeted operation instead.",
         )
     return _decision(
         "ask",
