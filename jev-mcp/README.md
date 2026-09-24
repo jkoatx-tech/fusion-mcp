@@ -119,11 +119,18 @@ Tips: Jev only sees `state`, so put everything the decision depends on into
 it. Add a catch-all label (`other`) to classifications. Use `jev_ask` to ask
 several questions about the same state in one billed call.
 
-## Guard: Jev check before `delete_all`
+## Guard: Jev check before destructive Fusion tools
 
 `jev-guard` is a Claude Code **PreToolUse hook** for the Fusion server's
-`delete_all`. Before the tool runs, Jev judges: *did the user explicitly ask
-to delete, clear or reset the entire design?*
+destructive tools. Before the tool runs, Jev answers one yes/no question:
+
+| Tool | Question Jev answers |
+|---|---|
+| `delete_all` | Did the user explicitly ask to delete, clear or reset the entire design? |
+| `delete_parameter` | Did the user explicitly ask to delete the parameter named in `tool_input.name`? |
+
+The parameter name reaches Jev only as data in the state and is never
+inserted into the question, so the caller cannot rewrite the question.
 
 The state Jev judges is made of the **user's own last messages** from the
 session transcript. Assistant text, tool results, system reminders and task
@@ -139,15 +146,15 @@ The guard only restricts and never grants permission:
 | < 0.2 (`--deny-below`) | `deny` | call blocked; the reason goes to Claude |
 | error / no key / no user messages | `ask` | fail safe: you decide |
 
-Register it in `~/.claude/settings.json`. The matcher catches `delete_all`
-under any server name (e.g. `mcp__fusion360__delete_all`):
+Register it in `~/.claude/settings.json`. The matcher catches both tools
+under any server name (e.g. `mcp__fusion360__delete_parameter`):
 
 ```json
 {
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "mcp__.*__delete_all",
+        "matcher": "mcp__.*__(delete_all|delete_parameter)",
         "hooks": [
           {
             "type": "command",
