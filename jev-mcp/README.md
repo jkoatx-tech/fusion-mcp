@@ -119,6 +119,64 @@ Tips: Jev only sees `state`, so put everything the decision depends on into
 it. Add a catch-all label (`other`) to classifications. Use `jev_ask` to ask
 several questions about the same state in one billed call.
 
+## Guard: Jev check before `delete_all`
+
+`jev-guard` is a Claude Code **PreToolUse hook** for the Fusion server's
+`delete_all`. Before the tool runs, Jev judges: *did the user explicitly ask
+to delete, clear or reset the entire design?*
+
+The state Jev judges is made of the **user's own last messages** from the
+session transcript. Assistant text, tool results, system reminders and task
+notifications are filtered out, so Claude cannot argue its way past the
+check.
+
+The guard only restricts and never grants permission:
+
+| Jev `p(yes)` | Decision | Effect |
+|---|---|---|
+| ≥ 0.9 (`--allow-above`) | none | normal permission flow (your settings apply) |
+| between the thresholds | `ask` | you confirm in Claude Code |
+| < 0.2 (`--deny-below`) | `deny` | call blocked; the reason goes to Claude |
+| error / no key / no user messages | `ask` | fail safe: you decide |
+
+Register it in `~/.claude/settings.json`. The matcher catches `delete_all`
+under any server name (e.g. `mcp__fusion360__delete_all`):
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "mcp__.*__delete_all",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run --directory /ABSOLUTE/PATH/TO/fusion-mcp/jev-mcp jev-guard",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+`TYPESAFE_API_KEY` must be set in the environment Claude Code runs in (hooks
+inherit it). Test without a key with `jev-guard --mode mock`. Each request
+times out after 5 s (`--timeout`) with one retry. The hook timeout of 30 s
+leaves headroom for that.
+
+Notes:
+
+- The transcript format is not an official Claude Code API. If it changes
+  and no user messages are found, the guard falls back to `ask`, never to
+  allow.
+- `ask` behaves like a normal permission prompt. In unattended runs
+  (`claude -p`), what happens to it depends on your permission mode, so test
+  that setup before you rely on it.
+- More destructive tools can be added in `POLICIES` in
+  `src/jev_mcp/guard.py`.
+
 ## Design notes
 
 - Uses the official `typesafe-sdk` (MIT) instead of raw HTTP: wire format,

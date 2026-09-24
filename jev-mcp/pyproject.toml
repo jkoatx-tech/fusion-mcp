@@ -14,6 +14,7 @@ dependencies = [
 
 [project.scripts]
 jev-mcp = "jev_mcp:main"
+jev-guard = "jev_mcp.guard:main"
 
 [tool.setuptools]
 package-dir = { "" = "src" }

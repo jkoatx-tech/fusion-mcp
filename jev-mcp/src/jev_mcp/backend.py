@@ -44,7 +44,8 @@ class TypeSafeBackend:
                 self._client = AsyncTypeSafeClient(**self._options)
             except TypeSafeError as exc:
                 raise JevError(
-                    f"{exc} Set TYPESAFE_API_KEY in the MCP server's environment."
+                    f"{exc} Set TYPESAFE_API_KEY in the environment Claude Code "
+                    "runs in."
                 ) from exc
         return self._client
 
