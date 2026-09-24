@@ -82,7 +82,8 @@ def test_policy_matches_any_server_prefix():
     assert policy_for("mcp__fusion360__delete_all")[0] == "delete_all"
     assert policy_for("mcp__fusion__delete_all")[0] == "delete_all"
     assert policy_for("mcp__fusion360__delete_parameter")[0] == "delete_parameter"
-    assert policy_for("mcp__fusion360__undo") is None
+    assert policy_for("mcp__fusion360__undo")[0] == "undo"
+    assert policy_for("mcp__fusion360__redo_everything") is None
 
 
 # ── decisions ────────────────────────────────────────────────────────
@@ -130,7 +131,7 @@ def test_missing_transcript_asks_without_calling_jev(tmp_path):
 
 def test_unguarded_tool_is_ignored(tmp_path):
     backend = FakeBackend(p_yes=0.0)
-    assert decide(hook(None, tool="mcp__fusion360__undo"), backend) is None
+    assert decide(hook(None, tool="mcp__fusion360__extrude"), backend) is None
     assert backend.calls == []
 
 
@@ -158,10 +159,11 @@ def test_cli_invalid_input_asks():
 def test_every_policy_is_complete():
     from jev_mcp.guard import POLICIES
 
-    assert set(POLICIES) == {"delete_all", "delete_parameter"}
+    assert set(POLICIES) == {"delete_all", "delete_parameter", "undo"}
     for policy in POLICIES.values():
         assert policy["action"] and policy["deny_reason"]
         assert policy["question"]["type"] == "noul"
+        assert policy.get("on_no", "deny") in {"deny", "ask"}
 
 
 def test_delete_parameter_name_stays_in_state(tmp_path):
@@ -188,3 +190,28 @@ def test_delete_parameter_deny_reason(tmp_path):
     assert spec["permissionDecision"] == "deny"
     assert "delete this parameter" in spec["permissionDecisionReason"]
     assert "delete_parameter" in spec["permissionDecisionReason"]
+
+
+# ── undo ─────────────────────────────────────────────────────────────
+
+
+def test_undo_confident_no_asks_instead_of_deny(tmp_path):
+    t = write_transcript(tmp_path, [user("Add a 2 mm fillet")])
+    out = decide(hook(t, tool="mcp__fusion360__undo"), FakeBackend(p_yes=0.02))
+    spec = out["hookSpecificOutput"]
+    assert spec["permissionDecision"] == "ask"
+    assert "did not ask to undo" in spec["permissionDecisionReason"]
+
+
+def test_undo_requested_passes(tmp_path):
+    t = write_transcript(tmp_path, [user("mach das rückgängig")])
+    assert decide(hook(t, tool="mcp__fusion360__undo"),
+                  FakeBackend(p_yes=0.96)) is None
+
+
+def test_deny_policies_still_deny(tmp_path):
+    t = write_transcript(tmp_path, [user("Add a 2 mm fillet")])
+    for tool in ("delete_all", "delete_parameter"):
+        out = decide(hook(t, tool=f"mcp__fusion360__{tool}"),
+                     FakeBackend(p_yes=0.02))
+        assert out["hookSpecificOutput"]["permissionDecision"] == "deny"

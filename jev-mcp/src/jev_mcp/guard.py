@@ -1,19 +1,20 @@
 """
 Claude Code PreToolUse hook: let Jev check destructive Fusion tools.
 
-Before a destructive Fusion tool (``delete_all``, ``delete_parameter``) runs,
-Jev judges whether the user explicitly asked for exactly that.  The state Jev
-sees is built from the *user's own* messages in the session transcript, so
-Claude cannot talk its way past the check.
+Before a destructive Fusion tool (``delete_all``, ``delete_parameter``,
+``undo``) runs, Jev judges whether the user explicitly asked for exactly that.
+The state Jev sees is built from the *user's own* messages in the session
+transcript, so Claude cannot talk its way past the check.
 
 The guard only ever restricts, it never grants permission:
 
 - Jev is confident the user asked for it   → no output, normal permission flow
 - Jev is unsure, or the check fails        → ``ask`` (the user confirms)
-- Jev is confident the user did not ask    → ``deny`` (reason goes to Claude)
+- Jev is confident the user did not ask    → ``deny`` (reason goes to Claude);
+  policies with ``on_no="ask"`` (``undo``) ask instead
 
 Register it in ``~/.claude/settings.json`` (see README), matching
-``mcp__.*__(delete_all|delete_parameter)``.
+``mcp__.*__(delete_all|delete_parameter|undo)``.
 """
 
 import json
@@ -84,6 +85,33 @@ POLICIES: dict[str, dict] = {
             },
         },
         "deny_reason": "the user did not ask to delete this parameter",
+    },
+    "undo": {
+        "action": (
+            "undo: reverts the last operation in the open Fusion 360 design "
+            "(may also revert a design-type switch)."
+        ),
+        "question": {
+            "type": "noul",
+            "instructions": (
+                "Did the user ask to undo, revert or roll back the last "
+                "operation?"
+            ),
+            "criteria": {
+                "true": (
+                    "The user asked to undo or go back, e.g. 'undo that', "
+                    "'mach das rückgängig', 'revert the last step'."
+                ),
+                "false": (
+                    "The user asked for something else or never mentioned "
+                    "reverting anything."
+                ),
+            },
+        },
+        "deny_reason": "the user did not ask to undo",
+        # undo is Claude's normal way to fix its own last step: never block
+        # it outright, let the user confirm instead.
+        "on_no": "ask",
     },
 }
 
@@ -194,11 +222,17 @@ async def evaluate(
 
     if p_yes >= allow_above:
         return None
-    if p_yes < deny_below:
+    if p_yes < deny_below and policy.get("on_no", "deny") == "deny":
         return _decision(
             "deny",
             f"Jev guard: {policy['deny_reason']} (p={p_yes:.2f}). Do not "
             f"call {short}; ask the user or use a targeted operation instead.",
+        )
+    if p_yes < deny_below:
+        return _decision(
+            "ask",
+            f"Jev guard: {policy['deny_reason']} (p={p_yes:.2f}). "
+            f"Please confirm {short}.",
         )
     return _decision(
         "ask",
