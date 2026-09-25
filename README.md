@@ -128,6 +128,10 @@ FUSION_MCP_HOST=192.168.1.42 uvx fusion360-mcp-server --mode socket
 
 The server is plain stdio MCP, so it works with a fully local agent — useful when part geometry shouldn't leave your machines. See [docs/local-llm.md](docs/local-llm.md) for a Hermes Agent + llama.cpp + Qwen 3.6 setup, hardware requirements, and how to trim the tool list to fit a small model's context window.
 
+### Paperclip organization
+
+To run this server as the CAD tool of a multi-agent Paperclip organization, see [docs/paperclip.md](docs/paperclip.md): one writing agent, read-only reviewers, and how jev-guard and Paperclip decisions divide the guarding of destructive calls.
+
 ### 3. Verify
 
 Call the `ping` tool from your client. If it returns `{"pong": true}`, everything is connected.
