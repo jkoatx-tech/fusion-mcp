@@ -303,12 +303,13 @@ Call the `ping` tool from your client. If it returns `{"pong": true}`, everythin
 - **Prompts** — `create-box`, `model-threaded-bolt`, `sheet-metal-enclosure` workflow templates
 - **Structured errors** — tool results include `isError=True` when the add-in reports failures
 - **Mock mode** — `--mode mock` returns plausible test data without Fusion running (all responses include `"mode": "mock"`)
+- **Read-only mode** — `--read-only` (env `FUSION_MCP_READ_ONLY=1`) lists only `readOnlyHint` tools and refuses all others before they reach Fusion; useful for review or monitoring agents
 
 ## Development
 
 ```bash
 uv sync --dev       # install deps
-uv run pytest -v    # run tests (262 tests)
+uv run pytest -v    # run tests (273 tests)
 uv run ruff check   # lint
 ```
 

@@ -89,39 +89,28 @@ Install jev-guard as a PreToolUse hook for this agent (see the jev-mcp repo). Ch
 
 ### 3. CAD reviewer (read-only)
 
-On Hermes or Pi, use the harness's tool filter with only the read-only set. Add `export_step` if the reviewer should produce artifacts — exports don't change the design:
+Start the reviewer's server with `--read-only` (or `FUSION_MCP_READ_ONLY=1`). The server then lists only the `readOnlyHint` tools, hides the modelling prompts, and refuses every other tool call before it reaches Fusion. This works the same on every harness and doesn't depend on how Paperclip sets permissions:
 
 ```yaml
 mcp_servers:
   fusion360:
     command: "uvx"
-    args: ["fusion360-mcp-server", "--mode", "socket"]
+    args: ["fusion360-mcp-server", "--mode", "socket", "--read-only"]
     env:
       FUSION_MCP_HOST: "192.168.1.42"
-    tools:
-      include:
-        - ping
-        - get_scene_info
-        - get_object_info
-        - get_bounding_box
-        - list_components
-        - get_parameters
-        - get_physical_properties
-        - measure_distance
-        - measure_angle
-        - check_interference
-        - get_design_type
 ```
 
-This also keeps the tool schemas small, which matters on local models (see [local-llm.md](local-llm.md#trim-the-tool-list--this-matters-on-a-small-model)).
+For a Claude Code reviewer, add `"--read-only"` to `args` in the `.mcp.json` from step 2.
 
-On Claude Code there is no include filter on the server entry; the restriction has to come from permissions. That only holds if Paperclip does not start the agent with permission checks bypassed — see [open question 2](#open-questions).
+On a local model, additionally trim with the harness's `tools.include` filter; 14 tools are still more schema than a small context needs (see [local-llm.md](local-llm.md#trim-the-tool-list--this-matters-on-a-small-model)).
 
-Put the restriction in the harness config, not in the agent's prompt. A prompt is a request; a filter is a boundary.
+Exports (`export`, `export_step`, `export_stl`) are not annotated read-only and are refused in this mode. If the reviewer should produce artifacts, let the engineer export as the last step of its task and hand the file over.
+
+Put the restriction in the server config, not in the agent's prompt. A prompt is a request; a flag is a boundary.
 
 ### 4. Smoke test
 
-Assign the engineer a task: "call `ping`, then `get_scene_info`, report the result." `{"pong": true}` plus a scene summary means the whole chain is up. Do the same for the reviewer, and additionally have it try `create_sketch` — that call must fail.
+Assign the engineer a task: "call `ping`, then `get_scene_info`, report the result." `{"pong": true}` plus a scene summary means the whole chain is up. Do the same for the reviewer, and additionally have it try `create_sketch` — that call must come back `Refused (create_sketch): the server runs in --read-only mode`.
 
 ## Paperclip features that fit
 
@@ -133,10 +122,8 @@ Assign the engineer a task: "call `ping`, then `get_scene_info`, report the resu
 ## Open questions
 
 1. **Does jev-guard work unattended?** If the guard waits for an interactive answer, an agent run by Paperclip has nobody at the terminal: the call either hangs until timeout or gets decided by the fallback path. Verify the guard's non-interactive behavior before giving the engineer write access.
-2. **How does Paperclip launch Claude Code?** If it runs agents with permission checks bypassed, Claude Code permission rules don't restrict a reviewer, and hooks are the only tool-level control. Find out before relying on permissions for read-only agents.
-3. **Per-agent MCP config.** How Paperclip scopes MCP servers per agent (per working directory, per agent config, global) decides whether "only the engineer has write tools" is enforceable at all.
-
-A harness-independent fix for 2 and 3 would be a read-only mode in this server itself (e.g. a `--read-only` flag that only registers the `_READ_ONLY` tools). It does not exist yet.
+2. **How does Paperclip launch Claude Code?** If it runs agents with permission checks bypassed, Claude Code permission rules don't restrict anything, and hooks plus `--read-only` are the only tool-level controls. That matters for the engineer, not the reviewer.
+3. **Per-agent MCP config.** `--read-only` only helps if the reviewer can get its own server entry. How Paperclip scopes MCP servers per agent (per working directory, per agent config, global) decides whether "only the engineer has write tools" is enforceable at all. If the config is global, run every agent read-only and give the engineer a separate one.
 
 ## Caveats
 
