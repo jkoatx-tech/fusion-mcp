@@ -49,15 +49,6 @@ uv run ruff check  # lint
 - Every tool has annotations (`readOnlyHint`, `destructiveHint`, `idempotentHint`)
 - Every tool has a mock handler so `--mode mock` works without Fusion running
 
-## jev-mcp (sub-project)
+## Jev guard (separate repo)
 
-`jev-mcp/` is a separate, self-contained MCP server (own `pyproject.toml` and `uv.lock`) that exposes TypeSafe Jev, a decision model returning typed, calibrated answers, as Claude Code tools (`jev_check`, `jev_classify`, `jev_score`, `jev_ask`, `jev_list_models`). It does not depend on the Fusion server.
-
-```bash
-cd jev-mcp && uv sync --dev && uv run pytest -q && uv run ruff check src tests
-```
-
-- Uses the official `typesafe-sdk`; the API key comes from `TYPESAFE_API_KEY`, never commit it
-- `--mode mock` works without a key
-- `jev-guard` is a PreToolUse hook: Jev checks the user's own messages before `delete_all`, `delete_parameter`, `undo` and mail tools (send/reply/forward) (never grants permission, only `ask`/`deny`; `undo` only `ask`). Works in Claude Code (transcript) and GitHub Copilot (prompt store fed by the same hook); keep `import jev_mcp.guard` light, it runs before every Copilot tool call
-- Setup for Claude Code (server and hook): see `jev-mcp/README.md`
+The Jev MCP server and `jev-guard` (PreToolUse hook that lets Jev check `delete_all`, `delete_parameter` and `undo` of this server, plus mail tools) moved to [jkoatx-tech/jev-mcp](https://github.com/jkoatx-tech/jev-mcp). The guard matches these tools under any server name, so renaming them here breaks the check: keep the names or update `POLICIES` there.
