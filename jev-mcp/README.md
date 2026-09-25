@@ -38,7 +38,7 @@ Prerequisites: [uv](https://docs.astral.sh/uv/), a TypeSafe API key.
 ```bash
 cd jev-mcp
 uv sync --dev
-uv run pytest -q              # 31 tests, no network or key needed
+uv run pytest -q              # 63 tests, no network or key needed
 uv run jev-mcp --mode mock    # manual run without API key
 ```
 
@@ -119,7 +119,7 @@ Tips: Jev only sees `state`, so put everything the decision depends on into
 it. Add a catch-all label (`other`) to classifications. Use `jev_ask` to ask
 several questions about the same state in one billed call.
 
-## Guard: Jev check before destructive Fusion tools
+## Guard: Jev check before destructive Fusion tools and sending mail
 
 `jev-guard` is a Claude Code **PreToolUse hook** for the Fusion server's
 destructive tools. Before the tool runs, Jev answers one yes/no question:
@@ -159,7 +159,7 @@ under any server name (e.g. `mcp__fusion360__delete_parameter`):
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "mcp__.*__(delete_all|delete_parameter|undo)",
+        "matcher": "mcp__.*(delete_all|delete_parameter|undo|send_message|send_e?mail|send-mail|reply|reply_all|reply-mail|reply_to_message|forward|forward_message|forward-mail)$",
         "hooks": [
           {
             "type": "command",
@@ -188,6 +188,77 @@ Notes:
   that setup before you rely on it.
 - More destructive tools can be added in `POLICIES` in
   `src/jev_mcp/guard.py`.
+
+## Guard: Jev check before sending mail
+
+The same hook guards mail tools (send, reply, forward) of any mail MCP server
+(Gmail, Microsoft 365, SMTP). Jev answers: *Did the user explicitly ask to
+send this email now, to the recipients in `tool_input`?* Recipients, subject
+and body reach Jev only as data in the state.
+
+| Jev `p(yes)` | Decision |
+|---|---|
+| ≥ 0.9 | normal permission flow |
+| between | `ask` |
+| < 0.2 | `deny`: "show the user the draft and ask before sending" |
+| error / no key / no user messages | `ask` |
+
+Guarded names (the part after the last `__`, or the end of the tool name):
+`send_message`, `send_email`, `send_mail`, `send-mail`, `reply`, `reply_all`,
+`reply-mail`, `reply_to_message`, `forward`, `forward_message`,
+`forward-mail`. Drafts are not guarded. `send_message` also names chat and
+agent-to-agent tools, so it counts as mail only when `tool_input` carries a
+recipient (`to`, `recipients`, `toRecipients`, `cc`, `bcc`). Add names in
+`MAIL_TOOLS` in `src/jev_mcp/guard.py`.
+
+For Claude Code, the matcher in the `settings.json` snippet above already
+covers the mail tools.
+
+## GitHub Copilot (VS Code agent mode and Copilot CLI)
+
+Copilot's PreToolUse input has no transcript the guard can read (the CLI sends
+none, VS Code writes its own format with a delay). Its prompt hook does carry
+the user's text, so `jev-guard` also handles that event: it records the last
+5 prompts per session in `~/.jev-guard/sessions/` (override with
+`JEV_GUARD_STATE_DIR`) and reads them back at PreToolUse. Output follows the
+client: flat `permissionDecision` for the CLI, `hookSpecificOutput` for
+VS Code.
+
+1. Set up the package (`uv sync`) and `TYPESAFE_API_KEY` as above.
+2. Copy `copilot-hooks.example.json` to `~/.copilot/hooks/jev-guard.json`
+   (Windows: `%USERPROFILE%\.copilot\hooks\`) and fix the path. Both the
+   CLI and VS Code read that folder.
+3. VS Code: `chat.useHooks` is on by default. Hooks there are in preview.
+
+Notes:
+
+- Copilot runs the hook before **every** tool call (VS Code ignores
+  matchers). The guard answers unguarded tools in about 0.3 s without loading
+  the backend. The example calls `.venv/Scripts/jev-guard.exe` directly
+  because `uv run` adds startup time.
+- In the Copilot CLI a hook **timeout lets the tool run**. Keep `timeoutSec`
+  (30) well above the guard's worst case (5 s request, one retry).
+- Under the Copilot cloud agent, `ask` becomes `deny` (no user to ask).
+- The prompt store is a plain file. An agent with file-write access could
+  forge it; the transcript path in Claude Code does not have that gap.
+- Everything Jev judges (your prompts, recipients, mail body) goes to
+  `api.typesafe.ai`. Check that this is allowed where you use it.
+
+To use Jev's decision tools in Copilot as well, register the MCP server in
+VS Code (`MCP: Open User Configuration`):
+
+```json
+{
+  "servers": {
+    "jev": {
+      "type": "stdio",
+      "command": "uv",
+      "args": ["run", "--directory", "C:/ABSOLUTE/PATH/TO/fusion-mcp/jev-mcp", "jev-mcp"],
+      "env": { "TYPESAFE_API_KEY": "${env:TYPESAFE_API_KEY}" }
+    }
+  }
+}
+```
 
 ## Design notes
 

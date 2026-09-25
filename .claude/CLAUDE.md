@@ -59,5 +59,5 @@ cd jev-mcp && uv sync --dev && uv run pytest -q && uv run ruff check src tests
 
 - Uses the official `typesafe-sdk`; the API key comes from `TYPESAFE_API_KEY`, never commit it
 - `--mode mock` works without a key
-- `jev-guard` is a PreToolUse hook: Jev checks the user's own transcript messages before `delete_all`, `delete_parameter` and `undo` (never grants permission, only `ask`/`deny`; `undo` only `ask`)
+- `jev-guard` is a PreToolUse hook: Jev checks the user's own messages before `delete_all`, `delete_parameter`, `undo` and mail tools (send/reply/forward) (never grants permission, only `ask`/`deny`; `undo` only `ask`). Works in Claude Code (transcript) and GitHub Copilot (prompt store fed by the same hook); keep `import jev_mcp.guard` light, it runs before every Copilot tool call
 - Setup for Claude Code (server and hook): see `jev-mcp/README.md`

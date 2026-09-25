@@ -157,9 +157,10 @@ def test_cli_invalid_input_asks():
 
 
 def test_every_policy_is_complete():
-    from jev_mcp.guard import POLICIES
+    from jev_mcp.guard import MAIL_TOOLS, POLICIES
 
-    assert set(POLICIES) == {"delete_all", "delete_parameter", "undo"}
+    assert set(POLICIES) == {"delete_all", "delete_parameter", "undo",
+                             *MAIL_TOOLS}
     for policy in POLICIES.values():
         assert policy["action"] and policy["deny_reason"]
         assert policy["question"]["type"] == "noul"
@@ -215,3 +216,106 @@ def test_deny_policies_still_deny(tmp_path):
         out = decide(hook(t, tool=f"mcp__fusion360__{tool}"),
                      FakeBackend(p_yes=0.02))
         assert out["hookSpecificOutput"]["permissionDecision"] == "deny"
+
+
+# ── mail ─────────────────────────────────────────────────────────────
+
+MAIL = {"to": ["zoe@example.com"], "subject": "Angebot", "body": "Hallo Zoe"}
+
+
+def mail_hook(transcript, tool="mcp__gmail__send_message", tool_input=MAIL):
+    h = hook(transcript, tool=tool)
+    h["tool_input"] = dict(tool_input)
+    return h
+
+
+def test_mail_draft_only_denies(tmp_path):
+    t = write_transcript(tmp_path, [user("Schreib Anna einen Entwurf, nicht senden")])
+    out = decide(mail_hook(t), FakeBackend(p_yes=0.04))
+    spec = out["hookSpecificOutput"]
+    assert spec["permissionDecision"] == "deny"
+    assert "send this email" in spec["permissionDecisionReason"]
+    assert "show the user the draft" in spec["permissionDecisionReason"]
+
+
+def test_mail_requested_passes_and_recipients_stay_in_state(tmp_path):
+    from jev_mcp.guard import POLICIES
+
+    t = write_transcript(tmp_path, [user("Schick die Mail an Zoe ab")])
+    backend = FakeBackend(p_yes=0.95)
+    assert decide(mail_hook(t), backend) is None
+    state, questions = backend.calls[0]
+    assert state["tool_input"] == MAIL
+    assert questions == {"requested": POLICIES["send_message"]["question"]}
+    assert "zoe" not in json.dumps(questions).lower()
+
+
+@pytest.mark.parametrize("tool", [
+    "mcp__gmail__send_message", "mcp__m365__send-mail", "mcp__x__reply",
+    "mcp__x__forward", "mcp__outlook__outlook_send_mail",
+    "mcp_gmail_send_message", "send_email",
+])
+def test_mail_tools_match_across_naming_schemes(tool):
+    assert policy_for(tool, MAIL) is not None
+
+
+def test_send_message_without_recipient_is_not_mail():
+    # e.g. a chat or agent-to-agent tool that is also called send_message
+    assert policy_for("mcp__ccd_session_mgmt__send_message",
+                      {"session_id": "x", "message": "hi"}) is None
+    assert policy_for("mcp__teams__teams_send_chat_message", MAIL) is None
+
+
+# ── prompt store (Copilot) ───────────────────────────────────────────
+
+
+def test_copilot_cli_prompt_then_tool_call(tmp_path, monkeypatch):
+    monkeypatch.setenv("JEV_GUARD_STATE_DIR", str(tmp_path))
+    runner = CliRunner()
+    prompt = {"sessionId": "s-1", "timestamp": 1, "cwd": ".",
+              "prompt": "Entwurf an Anna, noch nicht senden"}
+    assert runner.invoke(main, ["--mode", "mock"],
+                         input=json.dumps(prompt)).output == ""
+
+    from jev_mcp.guard import read_prompts
+    assert read_prompts("s-1") == ["Entwurf an Anna, noch nicht senden"]
+
+    backend = FakeBackend(p_yes=0.03)
+    call = {"sessionId": "s-1", "timestamp": 2, "cwd": ".",
+            "toolName": "send_email", "toolArgs": json.dumps(MAIL)}
+    out = decide(call, backend)
+    assert out["hookSpecificOutput"]["permissionDecision"] == "deny"
+    state, _ = backend.calls[0]
+    assert state["recent_user_messages"] == ["Entwurf an Anna, noch nicht senden"]
+    assert state["tool_input"] == MAIL
+
+
+def test_copilot_cli_gets_flat_decision(tmp_path, monkeypatch):
+    monkeypatch.setenv("JEV_GUARD_STATE_DIR", str(tmp_path))
+    call = {"sessionId": "none", "toolName": "send_email", "toolArgs": MAIL}
+    result = CliRunner().invoke(main, ["--mode", "mock"], input=json.dumps(call))
+    out = json.loads(result.output)
+    assert out == {"permissionDecision": "ask",
+                   "permissionDecisionReason": out["permissionDecisionReason"]}
+
+
+def test_vscode_prompt_store_used_when_transcript_unreadable(tmp_path, monkeypatch):
+    monkeypatch.setenv("JEV_GUARD_STATE_DIR", str(tmp_path))
+    from jev_mcp.guard import record_prompt
+    record_prompt("vs-1", "<system-reminder>x</system-reminder>Send it to Anna")
+    vs_transcript = tmp_path / "vscode.json"
+    vs_transcript.write_text('{"requests": []}')
+    h = mail_hook(str(vs_transcript), tool="mcp_gmail_send_message")
+    h["session_id"] = "vs-1"
+    backend = FakeBackend(p_yes=0.97)
+    assert decide(h, backend) is None
+    assert backend.calls[0][0]["recent_user_messages"] == ["Send it to Anna"]
+
+
+def test_prompt_store_keeps_last_messages(tmp_path, monkeypatch):
+    monkeypatch.setenv("JEV_GUARD_STATE_DIR", str(tmp_path))
+    from jev_mcp.guard import read_prompts, record_prompt
+    for i in range(8):
+        record_prompt("../evil/id", str(i))
+    assert read_prompts("../evil/id") == ["3", "4", "5", "6", "7"]
+    assert all(p.parent == tmp_path for p in tmp_path.iterdir())
