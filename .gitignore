@@ -10,3 +10,6 @@ build/
 *.log
 
 .worktrees
+
+# Claude Code hook state
+.claude/.state/
