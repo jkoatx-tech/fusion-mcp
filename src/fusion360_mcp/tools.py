@@ -2275,10 +2275,20 @@ for _t in TOOLS:
     }
 
 
-def get_tool_list() -> list[types.Tool]:
-    """Convert tool dicts to MCP Tool objects."""
+def is_read_only(name: str) -> bool:
+    """True if the tool never changes the design (``readOnlyHint``)."""
+    return name in _READ_ONLY
+
+
+def get_tool_list(read_only: bool = False) -> list[types.Tool]:
+    """Convert tool dicts to MCP Tool objects.
+
+    With ``read_only=True`` only tools annotated ``readOnlyHint`` are listed.
+    """
     result = []
     for t in TOOLS:
+        if read_only and not is_read_only(t["name"]):
+            continue
         ann = t.get("annotations")
         tool = types.Tool(
             name=t["name"],
