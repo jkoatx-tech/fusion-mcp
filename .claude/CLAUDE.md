@@ -49,6 +49,24 @@ uv run ruff check  # lint
 - Every tool has annotations (`readOnlyHint`, `destructiveHint`, `idempotentHint`)
 - Every tool has a mock handler so `--mode mock` works without Fusion running
 
+## Working with agents
+
+Intent flows project → mission → slice:
+
+- `.claude/intent.md` — project purpose, non-goals, current mission. Maintained by the user.
+- `.claude/slices/*.md` — one concrete change each (copy `TEMPLATE.md`): Goal, Done when, Out of scope, Proof. Only `status: active` slices are in play.
+- `.claude/hooks/refocus.py` — injects intent plus active slices at session start, after compaction and every 8 prompts (`REFOCUS_EVERY`).
+
+Team: the main session orchestrates (plans slices, delegates, merges results); the `builder` subagent implements one slice; the `qa` subagent verifies it read-only. Subagents cannot start subagents, so delegation always goes through the main session.
+
+Working agreements:
+
+- One active slice at a time. When its "Done when" is met: stop, fill in the Proof, report. No polishing.
+- Ideas outside the slice or intent are proposals to the user, never implemented on the side.
+- A check must verify the result. No checks of checks, no extra evidence nobody reads.
+- Decisions need the context: the agent with the details and the one with the big picture decide together, or it goes to the user. An approval from an agent without that context is not an approval.
+- A rule you add to any instruction file needs a reason. Run the `memory-audit` skill when a corrected mistake comes back.
+
 ## Jev guard (separate repo)
 
 The Jev MCP server and `jev-guard` (PreToolUse hook that lets Jev check `delete_all`, `delete_parameter` and `undo` of this server, plus mail tools) moved to [jkoatx-tech/jev-mcp](https://github.com/jkoatx-tech/jev-mcp). The guard matches these tools under any server name, so renaming them here breaks the check: keep the names or update `POLICIES` there.
