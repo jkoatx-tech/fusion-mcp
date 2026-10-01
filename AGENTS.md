@@ -173,6 +173,7 @@ The add-in uses a CustomEvent + work queue pattern to safely dispatch all Fusion
 - **Prompts** — `create-box`, `model-threaded-bolt`, `sheet-metal-enclosure` workflow templates
 - **Structured errors** — `isError=True` when the add-in reports failures
 - **Mock mode** — `--mode mock` returns test data without Fusion running
+- **Read-only mode** — `--read-only` (env `FUSION_MCP_READ_ONLY=1`) exposes only `readOnlyHint` tools and refuses the rest
 
 ## Important constraints
 

@@ -2,7 +2,8 @@
 Fusion360 MCP Server — stdio transport.
 
 Bridges Claude Code ↔ Fusion 360 add-in via TCP socket on localhost.
-Supports ``--mode mock`` for testing without Fusion running.
+Supports ``--mode mock`` for testing without Fusion running and
+``--read-only`` to expose only tools that never change the design.
 """
 
 import json
@@ -17,7 +18,7 @@ from mcp.server.lowlevel import Server
 
 from .connection import get_connection, reset_connection
 from .mock import mock_command
-from .tools import get_tool_by_name, get_tool_list
+from .tools import get_tool_by_name, get_tool_list, is_read_only
 
 logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
@@ -52,16 +53,23 @@ def _send(
               default=lambda: int(os.environ.get("FUSION_MCP_PORT", "9876")),
               help="TCP port the Fusion 360 add-in listens on "
                    "(env: FUSION_MCP_PORT)")
-def main(mode: str, host: str, port: int) -> int:
+@click.option("--read-only", "read_only", is_flag=True,
+              envvar="FUSION_MCP_READ_ONLY",
+              help=("Expose only tools that never change the design "
+                    "(readOnlyHint) and refuse all others "
+                    "(env: FUSION_MCP_READ_ONLY)."))
+def main(mode: str, host: str, port: int, read_only: bool) -> int:
     """Fusion360 MCP Server — connects Claude to Fusion 360."""
 
     app = Server("fusion360-mcp-server")
+    if read_only:
+        log.info("Read-only mode: only readOnlyHint tools are exposed")
 
     # ── tools ────────────────────────────────────────────────────────
 
     @app.list_tools()
     async def list_tools() -> list[types.Tool]:
-        return get_tool_list()
+        return get_tool_list(read_only=read_only)
 
     @app.call_tool()
     async def call_tool(
@@ -70,6 +78,16 @@ def main(mode: str, host: str, port: int) -> int:
         tool_def = get_tool_by_name(name)
         if not tool_def:
             raise ValueError(f"Unknown tool: {name}")
+        if read_only and not is_read_only(name):
+            return types.CallToolResult(
+                content=[types.TextContent(
+                    type="text",
+                    text=f"Refused ({name}): the server runs in "
+                         "--read-only mode and this tool changes the "
+                         "design.",
+                )],
+                isError=True,
+            )
 
         try:
             result = _send(mode, name, arguments, host=host, port=port)
@@ -283,13 +301,16 @@ def main(mode: str, host: str, port: int) -> int:
 
     @app.list_prompts()
     async def list_prompts() -> list[types.Prompt]:
+        # Every prompt is a modelling workflow; none can run read-only.
+        if read_only:
+            return []
         return list(_PROMPTS.values())
 
     @app.get_prompt()
     async def get_prompt(
         name: str, arguments: dict | None = None,
     ) -> types.GetPromptResult:
-        prompt = _PROMPTS.get(name)
+        prompt = None if read_only else _PROMPTS.get(name)
         if not prompt:
             raise ValueError(f"Unknown prompt: {name}")
         args = arguments or {}

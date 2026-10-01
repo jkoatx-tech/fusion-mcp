@@ -128,6 +128,10 @@ FUSION_MCP_HOST=192.168.1.42 uvx fusion360-mcp-server --mode socket
 
 The server is plain stdio MCP, so it works with a fully local agent — useful when part geometry shouldn't leave your machines. See [docs/local-llm.md](docs/local-llm.md) for a Hermes Agent + llama.cpp + Qwen 3.6 setup, hardware requirements, and how to trim the tool list to fit a small model's context window.
 
+### Paperclip organization
+
+To run this server as the CAD tool of a multi-agent Paperclip organization, see [docs/paperclip.md](docs/paperclip.md): one writing agent, read-only reviewers, and how jev-guard and Paperclip decisions divide the guarding of destructive calls.
+
 ### 3. Verify
 
 Call the `ping` tool from your client. If it returns `{"pong": true}`, everything is connected.
@@ -299,12 +303,13 @@ Call the `ping` tool from your client. If it returns `{"pong": true}`, everythin
 - **Prompts** — `create-box`, `model-threaded-bolt`, `sheet-metal-enclosure` workflow templates
 - **Structured errors** — tool results include `isError=True` when the add-in reports failures
 - **Mock mode** — `--mode mock` returns plausible test data without Fusion running (all responses include `"mode": "mock"`)
+- **Read-only mode** — `--read-only` (env `FUSION_MCP_READ_ONLY=1`) lists only `readOnlyHint` tools and refuses all others before they reach Fusion; useful for review or monitoring agents
 
 ## Development
 
 ```bash
 uv sync --dev       # install deps
-uv run pytest -v    # run tests (262 tests)
+uv run pytest -v    # run tests (273 tests)
 uv run ruff check   # lint
 ```
 
