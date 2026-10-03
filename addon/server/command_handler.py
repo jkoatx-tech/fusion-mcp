@@ -11,6 +11,7 @@ import base64
 import io
 import math
 import os
+import shutil
 import tempfile
 import time
 import traceback
@@ -20,7 +21,7 @@ import adsk.cam
 import adsk.core
 import adsk.fusion
 
-from . import get_logger
+from . import get_logger, turntable
 
 log = get_logger("handler")
 
@@ -91,6 +92,7 @@ class CommandHandler:
                 "import_mesh":          self.import_mesh,
                 "import_svg":           self.import_svg,
                 "capture_viewport":     self.capture_viewport,
+                "capture_turntable":    self.capture_turntable,
                 "create_box_parametric": self.create_box_parametric,
                 "boolean_operation":    self.boolean_operation,
                 "delete_all":           self.delete_all,
@@ -1367,36 +1369,16 @@ class CommandHandler:
         os.makedirs(os.path.dirname(os.path.abspath(file_path)),
                     exist_ok=True)
 
-        viewport = self.app.activeViewport
-        if viewport is None:
-            raise RuntimeError("No active viewport")
-
+        viewport = self._viewport()
         original = viewport.camera
         moved = view != "current" or fit
         try:
-            if view != "current":
-                cam = viewport.camera
-                cam.isSmoothTransition = False
-                cam.viewOrientation = getattr(adsk.core.ViewOrientations,
-                                           self._VIEWS[view])
-                viewport.camera = cam
-            if fit:
-                cam = viewport.camera
-                cam.isSmoothTransition = False
-                cam.isFitView = True
-                viewport.camera = cam
-            if moved:
-                viewport.refresh()
-            if not viewport.saveAsImageFile(file_path, width, height):
-                raise RuntimeError(f"Fusion could not write {file_path}")
+            self._apply_view(viewport, view, fit)
+            self._save_frame(viewport, file_path, width, height)
         finally:
             if moved:
-                original.isSmoothTransition = False
-                viewport.camera = original
-                viewport.refresh()
+                self._restore_camera(viewport, original)
 
-        with open(file_path, "rb") as f:
-            image = base64.b64encode(f.read()).decode("ascii")
         return {
             "file_path": file_path,
             "view": view,
@@ -1404,8 +1386,150 @@ class CommandHandler:
             "width": width,
             "height": height,
             "mime_type": "image/png",
-            "image_base64": image,
+            "image_base64": self._read_base64(file_path),
         }
+
+    def capture_turntable(self, frames: int = 72, degrees: float = 360,
+                          view: str = "iso", fps: int = 24,
+                          width: int = 1280, height: int = 720,
+                          format: str = "mp4", output_path: str = None,
+                          ffmpeg_path: str = None,
+                          keep_frames: bool = False):
+        """Orbit the camera around the model and render a turntable video.
+
+        Starts from *view* (fitted), rotates about the camera's up axis
+        through its target, saves one PNG per step and encodes them with
+        ffmpeg (mp4/gif). ``format="frames"`` skips encoding. The camera
+        is restored and the design is not changed.
+        """
+        if view != "current" and view not in self._VIEWS:
+            raise RuntimeError(
+                f"Unknown view '{view}'. Expected: current, "
+                f"{', '.join(self._VIEWS)}")
+        if not 2 <= frames <= 720:
+            raise RuntimeError("frames must be between 2 and 720")
+        if not 1 <= fps <= 60:
+            raise RuntimeError("fps must be between 1 and 60")
+        if not (16 <= width <= 3840 and 16 <= height <= 3840):
+            raise RuntimeError("width and height must be between 16 and 3840")
+        if format not in ("mp4", "gif", "frames"):
+            raise RuntimeError(
+                f"Unknown format '{format}' — use mp4, gif or frames")
+        angles = turntable.orbit_angles(frames, degrees)
+
+        ffmpeg = None
+        if format != "frames":
+            ffmpeg = turntable.find_ffmpeg(ffmpeg_path)
+            if ffmpeg is None:
+                raise RuntimeError(
+                    "ffmpeg not found — install it, pass ffmpeg_path, "
+                    "or use format 'frames'")
+
+        if output_path is None:
+            desktop = os.path.join(os.path.expanduser("~"), "Desktop")
+            name = f"{self._design().parentDocument.name}_turntable"
+            output_path = os.path.join(
+                desktop, name if format == "frames" else f"{name}.{format}")
+
+        if format == "frames":
+            frames_dir = output_path
+            os.makedirs(frames_dir, exist_ok=True)
+        else:
+            os.makedirs(os.path.dirname(os.path.abspath(output_path)),
+                        exist_ok=True)
+            frames_dir = tempfile.mkdtemp(prefix="fusion_mcp_turntable_")
+
+        viewport = self._viewport()
+        original = viewport.camera
+        t0 = time.monotonic()
+        try:
+            self._apply_view(viewport, view, fit=True)
+            start = viewport.camera
+            eye = (start.eye.x, start.eye.y, start.eye.z)
+            target = (start.target.x, start.target.y, start.target.z)
+            up = (start.upVector.x, start.upVector.y, start.upVector.z)
+
+            for i, angle in enumerate(angles):
+                cam = viewport.camera
+                cam.isSmoothTransition = False
+                cam.eye = adsk.core.Point3D.create(
+                    *turntable.rotate_about_axis(eye, target, up, angle))
+                cam.target = adsk.core.Point3D.create(*target)
+                cam.upVector = adsk.core.Vector3D.create(*up)
+                viewport.camera = cam
+                viewport.refresh()
+                self._save_frame(
+                    viewport,
+                    os.path.join(frames_dir, turntable.FRAME_PATTERN % i),
+                    width, height)
+        finally:
+            self._restore_camera(viewport, original)
+        render_seconds = time.monotonic() - t0
+
+        preview = self._read_base64(
+            os.path.join(frames_dir, turntable.FRAME_PATTERN % 0))
+
+        if ffmpeg is not None:
+            turntable.encode(turntable.ffmpeg_args(
+                ffmpeg, frames_dir, fps, format, output_path))
+            if not keep_frames:
+                shutil.rmtree(frames_dir, ignore_errors=True)
+
+        return {
+            "output_path": output_path,
+            "format": format,
+            "frames": frames,
+            "fps": fps,
+            "duration_s": round(frames / fps, 2),
+            "degrees": degrees,
+            "view": view,
+            "width": width,
+            "height": height,
+            "frames_dir": frames_dir if (keep_frames or ffmpeg is None)
+            else None,
+            "render_seconds": round(render_seconds, 1),
+            "mime_type": "image/png",
+            "image_base64": preview,
+        }
+
+    # -- viewport helpers ------------------------------------------------
+
+    def _viewport(self):
+        viewport = self.app.activeViewport
+        if viewport is None:
+            raise RuntimeError("No active viewport")
+        return viewport
+
+    def _apply_view(self, viewport, view: str, fit: bool):
+        if view != "current":
+            cam = viewport.camera
+            cam.isSmoothTransition = False
+            cam.viewOrientation = getattr(adsk.core.ViewOrientations,
+                                          self._VIEWS[view])
+            viewport.camera = cam
+        if fit:
+            cam = viewport.camera
+            cam.isSmoothTransition = False
+            cam.isFitView = True
+            viewport.camera = cam
+        if view != "current" or fit:
+            viewport.refresh()
+
+    @staticmethod
+    def _save_frame(viewport, path: str, width: int, height: int):
+        if not viewport.saveAsImageFile(path, width, height):
+            raise RuntimeError(f"Fusion could not write {path}")
+
+    @staticmethod
+    def _restore_camera(viewport, original):
+        original.isSmoothTransition = False
+        viewport.camera = original
+        viewport.refresh()
+
+    @staticmethod
+    def _read_base64(path: str) -> str:
+        with open(path, "rb") as f:
+            return base64.b64encode(f.read()).decode("ascii")
 
     def boolean_operation(self, target_body: str, tool_body: str,
                           operation: str = "join"):

@@ -18,7 +18,7 @@ from mcp.server.lowlevel import Server
 
 from .connection import get_connection, reset_connection
 from .mock import mock_command
-from .tools import get_tool_by_name, get_tool_list, is_read_only
+from .tools import COMMAND_TIMEOUTS, get_tool_by_name, get_tool_list, is_read_only
 
 logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
@@ -37,7 +37,8 @@ def _send(
     if mode == "mock":
         return mock_command(command_type, params)
     conn = get_connection(host=host, port=port)
-    return conn.send_command(command_type, params)
+    return conn.send_command(command_type, params,
+                             timeout=COMMAND_TIMEOUTS.get(command_type))
 
 
 @click.command()

@@ -149,6 +149,8 @@ class EventBridge:
         import importlib
 
         from . import command_handler as ch_mod
+        from . import turntable
+        importlib.reload(turntable)
         importlib.reload(ch_mod)
         self._handler = ch_mod.CommandHandler()
         # Reset lazy dispatch table so it picks up new commands

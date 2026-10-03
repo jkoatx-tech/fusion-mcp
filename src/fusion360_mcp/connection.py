@@ -95,11 +95,14 @@ class Fusion360Connection:
 
     def send_command(self, command_type: str,
                      params: dict[str, Any] | None = None,
-                     retries: int = _MAX_RETRIES) -> dict:
+                     retries: int = _MAX_RETRIES,
+                     timeout: float | None = None) -> dict:
         """Send a JSON command and block until a JSON response arrives.
 
         On connection failure, retries up to ``retries`` times with a
-        fresh socket before raising.
+        fresh socket before raising. A timeout is not retried: the add-in
+        may still be executing the command, and resending would run it
+        twice. *timeout* overrides the default 30 s socket timeout.
         """
         if not self._sock and not self.connect():
             raise ConnectionError(
@@ -113,17 +116,23 @@ class Fusion360Connection:
 
         try:
             self._sock.sendall(payload.encode("utf-8"))
-            self._sock.settimeout(_TIMEOUT)
+            self._sock.settimeout(timeout or _TIMEOUT)
             response = self._recv_json()
         except (socket.timeout, OSError, ConnectionError) as exc:
             log.error("Socket error: %s", exc)
             self.disconnect()
+            if isinstance(exc, socket.timeout):
+                raise ConnectionError(
+                    f"Fusion 360 did not answer {command_type} within "
+                    f"{timeout or _TIMEOUT:.0f}s — it may still be running; "
+                    "check the design before retrying") from exc
             if retries > 0:
                 log.info("Retrying (%d left)...", retries)
                 time.sleep(_RETRY_DELAY)
                 if self.connect():
                     return self.send_command(command_type, params,
-                                            retries=retries - 1)
+                                            retries=retries - 1,
+                                            timeout=timeout)
             raise ConnectionError(f"Lost connection to Fusion 360: {exc}") from exc
 
         if response.get("status") == "error":

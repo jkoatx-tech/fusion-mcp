@@ -35,6 +35,7 @@ Two components:
 - [uv](https://docs.astral.sh/uv/) (Python package manager)
 - Autodesk Fusion 360
 - An MCP-compatible client (Claude Code, OpenCode, Codex, Cursor, etc.)
+- Optional: [FFmpeg](https://ffmpeg.org/) on the Fusion machine for `capture_turntable` videos (`brew install ffmpeg` / `winget install ffmpeg`)
 
 ## Installation
 
@@ -142,7 +143,7 @@ Call the `ping` tool from your client. If it returns `{"pong": true}`, everythin
 2. Stop the add-in in Fusion (Shift+S → Add-Ins → Fusion360MCP → Stop)
 3. Delete the add-in folder from Fusion's AddIns directory
 
-## Available Tools (89)
+## Available Tools (90)
 
 ### Scene & Query
 | Tool | Description |
@@ -153,6 +154,7 @@ Call the `ping` tool from your client. If it returns `{"pong": true}`, everythin
 | `list_components` | List all components in the design |
 | `get_bounding_box` | Axis-aligned bounding box (min/max/size/center in cm); unions bodies for components |
 | `capture_viewport` | Render the viewport (current or standard view) to PNG and return it as an image; camera is restored |
+| `capture_turntable` | Orbit the camera around the model and encode a turntable video (mp4/gif via ffmpeg, or PNG frames); returns a preview frame |
 
 ### Design Type Safety
 | Tool | Description |
@@ -311,7 +313,7 @@ Call the `ping` tool from your client. If it returns `{"pong": true}`, everythin
 
 ```bash
 uv sync --dev       # install deps
-uv run pytest -v    # run tests (281 tests)
+uv run pytest -v    # run tests (302 tests)
 uv run ruff check   # lint
 ```
 

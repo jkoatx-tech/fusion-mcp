@@ -223,6 +223,63 @@ class TestRetry:
             conn.send_command("ping", retries=1)
 
 
+class TestTimeout:
+    def _silent_server(self):
+        """Accepts connections, counts commands, never answers."""
+        srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        srv.bind(("127.0.0.1", 0))
+        srv.listen(5)
+        received = []
+
+        def handler():
+            while True:
+                try:
+                    conn, _ = srv.accept()
+                except OSError:
+                    return
+                data = conn.recv(4096)
+                if data:
+                    received.append(data)
+
+        threading.Thread(target=handler, daemon=True).start()
+        return srv, received
+
+    def test_timeout_is_not_retried(self, monkeypatch):
+        """A timed-out command may still run in Fusion — never resend it."""
+        monkeypatch.setattr("fusion360_mcp.connection._RETRY_DELAY", 0.01)
+        srv, received = self._silent_server()
+        conn = Fusion360Connection("127.0.0.1", srv.getsockname()[1])
+        conn.connect()
+        try:
+            with pytest.raises(ConnectionError, match="may still be running"):
+                conn.send_command("extrude", retries=2, timeout=0.2)
+            assert len(received) == 1
+        finally:
+            srv.close()
+
+    def test_per_command_timeout_is_applied(self, monkeypatch):
+        seen = []
+        conn = Fusion360Connection("127.0.0.1", 1)
+
+        class FakeSock:
+            def sendall(self, _data):
+                pass
+
+            def settimeout(self, t):
+                seen.append(t)
+
+            def close(self):
+                pass
+
+        conn._sock = FakeSock()
+        monkeypatch.setattr(conn, "_recv_json",
+                            lambda: {"status": "success", "result": {}})
+        conn.send_command("capture_turntable", timeout=610.0)
+        conn.send_command("ping")
+        assert seen == [610.0, 30.0]
+
+
 class TestRecvJson:
     """Edge cases in _recv_json parsing."""
 

@@ -817,6 +817,31 @@ def _capture_viewport(p: dict) -> dict:
     }
 
 
+def _capture_turntable(p: dict) -> dict:
+    fmt = p.get("format", "mp4")
+    frames, fps = p.get("frames", 72), p.get("fps", 24)
+    default_out = "~/Desktop/Untitled_turntable"
+    out = p.get("output_path",
+                default_out if fmt == "frames" else f"{default_out}.{fmt}")
+    keep = p.get("keep_frames", False)
+    return {
+        "output_path": out,
+        "format": fmt,
+        "frames": frames,
+        "fps": fps,
+        "duration_s": round(frames / fps, 2),
+        "degrees": p.get("degrees", 360),
+        "view": p.get("view", "iso"),
+        "width": p.get("width", 1280),
+        "height": p.get("height", 720),
+        "frames_dir": out if fmt == "frames"
+        else ("/tmp/fusion_mcp_turntable_mock" if keep else None),
+        "render_seconds": 0.0,
+        "mime_type": "image/png",
+        "image_base64": _MOCK_PNG,
+    }
+
+
 # ── default fallback ─────────────────────────────────────────────────
 
 def _default_mock(p: dict) -> dict:
@@ -863,6 +888,7 @@ _DISPATCH: dict[str, Any] = {
     "import_mesh": _import_mesh,
     "import_svg": _import_svg,
     "capture_viewport": _capture_viewport,
+    "capture_turntable": _capture_turntable,
     "create_box_parametric": _create_box_parametric,
     "get_parameters": _get_parameters,
     "create_parameter": _create_parameter,

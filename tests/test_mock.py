@@ -95,6 +95,21 @@ class TestMockSceneQuery:
         assert result["view"] == "iso"
         assert result["fit"] is True
 
+    def test_capture_turntable_defaults(self):
+        result = mock_command("capture_turntable", {})
+        assert result["format"] == "mp4"
+        assert result["output_path"].endswith("_turntable.mp4")
+        assert result["duration_s"] == 3.0
+        assert result["frames_dir"] is None
+        assert result["image_base64"]
+
+    def test_capture_turntable_frames_only(self):
+        result = mock_command("capture_turntable", {
+            "format": "frames", "output_path": "/tmp/tt", "frames": 10,
+        })
+        assert result["frames_dir"] == "/tmp/tt"
+        assert result["frames"] == 10
+
     def test_create_box_parametric_numeric(self):
         result = mock_command("create_box_parametric", {
             "length": 56, "width": 30, "height": 25,

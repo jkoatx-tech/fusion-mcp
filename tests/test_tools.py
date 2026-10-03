@@ -81,7 +81,7 @@ def test_expected_tools_present():
         # import
         "import_mesh", "import_svg",
         # viewport
-        "capture_viewport",
+        "capture_viewport", "capture_turntable",
         # parameters
         "get_parameters", "create_parameter", "set_parameter", "delete_parameter",
         # sketch constraints & dimensions

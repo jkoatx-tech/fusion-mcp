@@ -2299,6 +2299,77 @@ TOOLS: list[dict] = [
             },
         },
     },
+    {
+        "name": "capture_turntable",
+        "title": "Capture Turntable",
+        "description": (
+            "Render a turntable video of the design: the camera orbits the "
+            "model about its up axis, one PNG per step, encoded with ffmpeg "
+            "to mp4 or gif on the Fusion machine (format 'frames' keeps the "
+            "PNGs only). Returns the output path and the first frame as a "
+            "preview image — check the framing on a short, low-res run "
+            "first. Fusion is blocked while it renders (up to 10 min). The "
+            "camera is restored and the design is not changed."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "frames": {
+                    "type": "integer", "default": 72,
+                    "minimum": 2, "maximum": 720,
+                },
+                "degrees": {
+                    "type": "number", "default": 360,
+                    "description": (
+                        "Total rotation; negative turns the other way. "
+                        "A multiple of 360 loops seamlessly."
+                    ),
+                },
+                "view": {
+                    "type": "string",
+                    "enum": ["current", "front", "back", "top", "bottom",
+                             "left", "right", "iso", "iso_top_left"],
+                    "default": "iso",
+                    "description": "Start view, fitted to all geometry",
+                },
+                "fps": {
+                    "type": "integer", "default": 24,
+                    "minimum": 1, "maximum": 60,
+                },
+                "width": {
+                    "type": "integer", "default": 1280,
+                    "minimum": 16, "maximum": 3840,
+                },
+                "height": {
+                    "type": "integer", "default": 720,
+                    "minimum": 16, "maximum": 3840,
+                },
+                "format": {
+                    "type": "string",
+                    "enum": ["mp4", "gif", "frames"],
+                    "default": "mp4",
+                },
+                "output_path": {
+                    "type": "string",
+                    "description": (
+                        "Video file, or directory for 'frames' "
+                        "(default: ~/Desktop/<design>_turntable[.ext])"
+                    ),
+                },
+                "ffmpeg_path": {
+                    "type": "string",
+                    "description": (
+                        "ffmpeg binary (default: PATH, then Homebrew "
+                        "and /usr locations)"
+                    ),
+                },
+                "keep_frames": {
+                    "type": "boolean", "default": False,
+                    "description": "Keep the PNG frames after encoding",
+                },
+            },
+        },
+    },
     # ── design type safety ──────────────────────────────────────────────
     {
         "name": "get_design_type",
@@ -2346,7 +2417,7 @@ _READ_ONLY = {
     "check_interference", "ping",
     "cam_list_setups", "cam_list_operations",
     "cam_get_operation_info",
-    "get_design_type", "capture_viewport",
+    "get_design_type", "capture_viewport", "capture_turntable",
 }
 _DESTRUCTIVE = {"delete_all", "delete_parameter"}
 _IDEMPOTENT = {
@@ -2359,8 +2430,13 @@ _IDEMPOTENT = {
     "cam_list_setups", "cam_list_operations",
     "cam_get_operation_info",
     "get_design_type", "set_design_type",
-    "rename_body", "capture_viewport",
+    "rename_body", "capture_viewport", "capture_turntable",
 }
+
+# Socket timeouts (s) for commands that run longer than the default 30 s.
+# Slightly above the add-in's own limits (_COMMAND_TIMEOUTS in
+# addon/server/socket_server.py) so its timeout error arrives first.
+COMMAND_TIMEOUTS = {"capture_turntable": 610.0}
 
 for _t in TOOLS:
     _name = _t["name"]

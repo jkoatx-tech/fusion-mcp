@@ -21,6 +21,10 @@ log = get_logger("socket")
 
 _RESTART_DELAY = 2.0   # seconds before rebinding after socket error
 _MAX_RESTARTS = 10      # consecutive restart cap before giving up
+_DEFAULT_TIMEOUT = 30.0
+# Commands that legitimately run longer; keep in sync with
+# COMMAND_TIMEOUTS in src/fusion360_mcp/tools.py.
+_COMMAND_TIMEOUTS = {"capture_turntable": 600.0}
 
 
 class Fusion360MCPServer:
@@ -210,7 +214,9 @@ class Fusion360MCPServer:
             return
 
         try:
-            response = self._bridge.submit(command)
+            response = self._bridge.submit(
+                command,
+                timeout=_COMMAND_TIMEOUTS.get(cmd_type, _DEFAULT_TIMEOUT))
         except Exception as exc:
             response = {"status": "error", "message": str(exc)}
         self._send(client, response)
