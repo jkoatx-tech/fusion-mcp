@@ -42,13 +42,21 @@ Commands time out after 30 seconds. An operation on a heavy design that exceeds 
 
 ## Measure, don't guess
 
-You cannot see the design. Coordinates guessed from a description will be wrong.
+Coordinates guessed from a description will be wrong.
 
 - `get_bounding_box` gives min/max/size/center in cm for a body or component. Use it to size anything against imported reference geometry.
 - `measure_distance` and `measure_angle` for relationships between entities.
 - `get_physical_properties` for mass, volume, and center of mass.
 
 The reliable pattern for fitting a part to a reference: `import_mesh` → `get_bounding_box` → compute → build.
+
+## Look at the result
+
+`capture_viewport` returns a PNG of the viewport. Use it after a feature that is easy to get wrong (patterns, mirrors, cuts, SVG imports): `view: "iso"` for an overview, `top`/`front` to check alignment. It restores the user's camera and does not change the design. The image shows shape, not dimensions — confirm sizes with `get_bounding_box`.
+
+## Logos, labels and cut-outs from SVG
+
+For outlines that are tedious to draw curve by curve, write an SVG and call `import_svg`. Closed paths become profiles you can `extrude`. SVG units do not always map 1:1 to cm, so pass `target_width` or check the returned `bounding_box`. The file must exist on the machine Fusion runs on.
 
 ## Prefer parametric construction
 

@@ -100,3 +100,26 @@ class TestReadOnlyServer:
 
         assert _run(check, "--read-only") == []
         assert len(_run(check)) > 0
+
+
+class TestCaptureViewport:
+    def _capture(self, *args):
+        async def check(session):
+            return await session.call_tool("capture_viewport", {"view": "iso"})
+
+        return _run(check, *args)
+
+    def test_returns_image_content(self):
+        result = self._capture()
+        assert result.isError is False
+        text, image = result.content
+        assert text.type == "text"
+        assert "image_base64" not in text.text
+        assert image.type == "image"
+        assert image.mimeType == "image/png"
+        assert image.data
+
+    def test_allowed_in_read_only_mode(self):
+        result = self._capture("--read-only")
+        assert result.isError is False
+        assert result.content[-1].type == "image"

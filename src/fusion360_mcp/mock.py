@@ -776,6 +776,47 @@ def _cam_get_operation_info(p: dict) -> dict:
     }
 
 
+# ── svg import / viewport ────────────────────────────────────────────
+
+# 1×1 transparent PNG
+_MOCK_PNG = ("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhf"
+             "DwAChwGA60e6kgAAAABJRU5ErkJggg==")
+
+
+def _import_svg(p: dict) -> dict:
+    scale = p.get("scale", 1.0)
+    width = p.get("target_width", 5.0 * scale)
+    x, y = p.get("x", 0), p.get("y", 0)
+    return {
+        "imported": True,
+        "file_path": p.get("file_path", ""),
+        "sketch_name": "Sketch_mock_svg",
+        "plane": p.get("plane", "xy"),
+        "z_offset": p.get("z_offset"),
+        "scale": scale,
+        "curve_count": 12,
+        "profile_count": 3,
+        "bounding_box": {
+            "min": [x, y, 0],
+            "max": [x + width, y + width / 2, 0],
+            "size": [width, width / 2],
+        },
+    }
+
+
+def _capture_viewport(p: dict) -> dict:
+    view = p.get("view", "current")
+    return {
+        "file_path": p.get("file_path", "/tmp/fusion_mcp_capture.png"),
+        "view": view,
+        "fit": p.get("fit", view != "current"),
+        "width": p.get("width", 1280),
+        "height": p.get("height", 720),
+        "mime_type": "image/png",
+        "image_base64": _MOCK_PNG,
+    }
+
+
 # ── default fallback ─────────────────────────────────────────────────
 
 def _default_mock(p: dict) -> dict:
@@ -820,6 +861,8 @@ _DISPATCH: dict[str, Any] = {
     "export_f3d": _export_f3d,
     "export": _export,
     "import_mesh": _import_mesh,
+    "import_svg": _import_svg,
+    "capture_viewport": _capture_viewport,
     "create_box_parametric": _create_box_parametric,
     "get_parameters": _get_parameters,
     "create_parameter": _create_parameter,

@@ -110,6 +110,16 @@ def main(mode: str, host: str, port: int, read_only: bool) -> int:
             if status == "error" or "error" in result:
                 is_error = True
 
+        # Images (capture_viewport) go back as image content, not text
+        image = None
+        if isinstance(result, dict) and "image_base64" in result:
+            result = dict(result)
+            image = types.ImageContent(
+                type="image",
+                data=result.pop("image_base64"),
+                mimeType=result.get("mime_type", "image/png"),
+            )
+
         # Format response
         lines = [f"**{name}** {'ERROR' if is_error else 'OK'}"]
         if isinstance(result, dict):
@@ -119,6 +129,8 @@ def main(mode: str, host: str, port: int, read_only: bool) -> int:
             lines.append(f"  {result}")
 
         content = [types.TextContent(type="text", text="\n".join(lines))]
+        if image is not None:
+            content.append(image)
         if is_error:
             return types.CallToolResult(
                 content=content, isError=True,

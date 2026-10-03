@@ -2203,6 +2203,102 @@ TOOLS: list[dict] = [
             "properties": {},
         },
     },
+    {
+        "name": "import_svg",
+        "title": "Import SVG",
+        "description": (
+            "Import an SVG file (on the Fusion machine) into a new sketch, "
+            "e.g. logos, labels or panel cut-outs. Closed paths become "
+            "profiles that can be extruded. Returns sketch name, profile "
+            "count and bounding box in cm — check the size, since SVG "
+            "units do not always map 1:1. Use target_width to scale the "
+            "result to an exact width."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "required": ["file_path"],
+            "properties": {
+                "file_path": {
+                    "type": "string",
+                    "description": "Absolute path to the .svg file",
+                },
+                "plane": {
+                    "type": "string",
+                    "enum": ["xy", "yz", "xz"],
+                    "default": "xy",
+                },
+                "z_offset": {
+                    "type": "number",
+                    "description": "Offset distance from the plane (cm)",
+                },
+                "x": {
+                    "type": "number", "default": 0,
+                    "description": "X position in the sketch (cm)",
+                },
+                "y": {
+                    "type": "number", "default": 0,
+                    "description": "Y position in the sketch (cm)",
+                },
+                "scale": {
+                    "type": "number", "default": 1,
+                    "exclusiveMinimum": 0,
+                    "description": "Scale factor applied on import",
+                },
+                "target_width": {
+                    "type": "number",
+                    "exclusiveMinimum": 0,
+                    "description": (
+                        "Desired sketch width in cm; overrides scale "
+                        "by measuring and re-importing"
+                    ),
+                },
+            },
+        },
+    },
+    # ── viewport ────────────────────────────────────────────────────────
+    {
+        "name": "capture_viewport",
+        "title": "Capture Viewport",
+        "description": (
+            "Render the Fusion viewport to a PNG and return it as an image, "
+            "so you can check visually what you modelled. Optionally switch "
+            "to a standard view first; the user's camera is restored "
+            "afterwards and the design is not changed."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "view": {
+                    "type": "string",
+                    "enum": ["current", "front", "back", "top", "bottom",
+                             "left", "right", "iso", "iso_top_left"],
+                    "default": "current",
+                },
+                "width": {
+                    "type": "integer", "default": 1280,
+                    "minimum": 16, "maximum": 4096,
+                },
+                "height": {
+                    "type": "integer", "default": 720,
+                    "minimum": 16, "maximum": 4096,
+                },
+                "fit": {
+                    "type": "boolean",
+                    "description": (
+                        "Zoom to fit all geometry (default: true for a "
+                        "named view, false for 'current')"
+                    ),
+                },
+                "file_path": {
+                    "type": "string",
+                    "description": (
+                        "Where to keep the PNG on the Fusion machine "
+                        "(default: temp dir, overwritten each call)"
+                    ),
+                },
+            },
+        },
+    },
     # ── design type safety ──────────────────────────────────────────────
     {
         "name": "get_design_type",
@@ -2250,7 +2346,7 @@ _READ_ONLY = {
     "check_interference", "ping",
     "cam_list_setups", "cam_list_operations",
     "cam_get_operation_info",
-    "get_design_type",
+    "get_design_type", "capture_viewport",
 }
 _DESTRUCTIVE = {"delete_all", "delete_parameter"}
 _IDEMPOTENT = {
@@ -2263,7 +2359,7 @@ _IDEMPOTENT = {
     "cam_list_setups", "cam_list_operations",
     "cam_get_operation_info",
     "get_design_type", "set_design_type",
-    "rename_body",
+    "rename_body", "capture_viewport",
 }
 
 for _t in TOOLS:

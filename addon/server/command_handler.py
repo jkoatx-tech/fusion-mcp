@@ -7,9 +7,11 @@ is safe.
 """
 
 import ast
+import base64
 import io
 import math
 import os
+import tempfile
 import time
 import traceback
 from contextlib import redirect_stdout
@@ -87,6 +89,8 @@ class CommandHandler:
                 "export_f3d":           self.export_f3d,
                 "export":               self.export,
                 "import_mesh":          self.import_mesh,
+                "import_svg":           self.import_svg,
+                "capture_viewport":     self.capture_viewport,
                 "create_box_parametric": self.create_box_parametric,
                 "boolean_operation":    self.boolean_operation,
                 "delete_all":           self.delete_all,
@@ -464,20 +468,18 @@ class CommandHandler:
     # Sketch
     # ------------------------------------------------------------------
 
+    def _sketch_plane(self, plane: str, z_offset: float = None):
+        """Origin plane, or a new construction plane offset from it."""
+        if z_offset is None or z_offset == 0:
+            return self._construction_plane(plane)
+        planes = self._root().constructionPlanes
+        plane_input = planes.createInput()
+        offset_val = adsk.core.ValueInput.createByReal(z_offset)
+        plane_input.setByOffset(self._construction_plane(plane), offset_val)
+        return planes.add(plane_input)
+
     def create_sketch(self, plane: str = "xy", z_offset: float = None):
-        root = self._root()
-
-        if z_offset is not None and z_offset != 0:
-            # Create an offset construction plane
-            planes = root.constructionPlanes
-            plane_input = planes.createInput()
-            offset_val = adsk.core.ValueInput.createByReal(z_offset)
-            plane_input.setByOffset(self._construction_plane(plane), offset_val)
-            cp = planes.add(plane_input)
-            sketch = root.sketches.add(cp)
-        else:
-            sketch = root.sketches.add(self._construction_plane(plane))
-
+        sketch = self._root().sketches.add(self._sketch_plane(plane, z_offset))
         return {"sketch_name": sketch.name, "plane": plane,
                 "z_offset": z_offset}
 
@@ -1270,6 +1272,139 @@ class CommandHandler:
                     bb.maxPoint.z - bb.minPoint.z,
                 ],
             },
+        }
+
+    def import_svg(self, file_path: str, plane: str = "xy",
+                   z_offset: float = None, x: float = 0, y: float = 0,
+                   scale: float = 1.0, target_width: float = None):
+        """Import an SVG into a new sketch. Position and size in cm.
+
+        With *target_width* the SVG is imported once to measure it, then
+        re-imported with the scale that gives that width.
+        """
+        if not os.path.exists(file_path):
+            raise RuntimeError(f"SVG file not found: {file_path}")
+        if not file_path.lower().endswith(".svg"):
+            raise RuntimeError(f"Not an .svg file: {file_path}")
+        if scale <= 0:
+            raise RuntimeError("scale must be > 0")
+        if target_width is not None and target_width <= 0:
+            raise RuntimeError("target_width must be > 0")
+
+        sketches = self._root().sketches
+        planar = self._sketch_plane(plane, z_offset)
+
+        def _import(s):
+            sketch = sketches.add(planar)
+            if not sketch.importSVG(file_path, x, y, s):
+                sketch.deleteMe()
+                raise RuntimeError(f"Fusion could not import {file_path}")
+            if sketch.sketchCurves.count == 0:
+                sketch.deleteMe()
+                raise RuntimeError(f"SVG contains no importable curves: "
+                                   f"{file_path}")
+            return sketch
+
+        sketch = _import(scale)
+        if target_width is not None:
+            bb = sketch.boundingBox
+            width = bb.maxPoint.x - bb.minPoint.x
+            if width <= 0:
+                raise RuntimeError("Imported SVG has zero width")
+            scale = scale * target_width / width
+            sketch.deleteMe()
+            sketch = _import(scale)
+
+        bb = sketch.boundingBox
+        return {
+            "imported": True,
+            "file_path": file_path,
+            "sketch_name": sketch.name,
+            "plane": plane,
+            "z_offset": z_offset,
+            "scale": scale,
+            "curve_count": sketch.sketchCurves.count,
+            "profile_count": sketch.profiles.count,
+            "bounding_box": {
+                **self._bbox_dict(bb),
+                "size": [bb.maxPoint.x - bb.minPoint.x,
+                         bb.maxPoint.y - bb.minPoint.y],
+            },
+        }
+
+    # Resolved lazily so a missing enum member can't break add-in import.
+    _VIEWS = {
+        "front": "FrontViewOrientation",
+        "back": "BackViewOrientation",
+        "top": "TopViewOrientation",
+        "bottom": "BottomViewOrientation",
+        "left": "LeftViewOrientation",
+        "right": "RightViewOrientation",
+        "iso": "IsoTopRightViewOrientation",
+        "iso_top_left": "IsoTopLeftViewOrientation",
+    }
+
+    def capture_viewport(self, view: str = "current", width: int = 1280,
+                         height: int = 720, fit: bool = None,
+                         file_path: str = None):
+        """Render the active viewport to PNG and return it base64-encoded.
+
+        The camera is restored afterwards, so the user's view is unchanged.
+        *fit* defaults to True for a named view, False for "current".
+        """
+        if view != "current" and view not in self._VIEWS:
+            raise RuntimeError(
+                f"Unknown view '{view}'. Expected: current, "
+                f"{', '.join(self._VIEWS)}")
+        if not (16 <= width <= 4096 and 16 <= height <= 4096):
+            raise RuntimeError("width and height must be between 16 and 4096")
+        if fit is None:
+            fit = view != "current"
+
+        if file_path is None:
+            file_path = os.path.join(tempfile.gettempdir(),
+                                     "fusion_mcp_capture.png")
+        os.makedirs(os.path.dirname(os.path.abspath(file_path)),
+                    exist_ok=True)
+
+        viewport = self.app.activeViewport
+        if viewport is None:
+            raise RuntimeError("No active viewport")
+
+        original = viewport.camera
+        moved = view != "current" or fit
+        try:
+            if view != "current":
+                cam = viewport.camera
+                cam.isSmoothTransition = False
+                cam.viewOrientation = getattr(adsk.core.ViewOrientations,
+                                           self._VIEWS[view])
+                viewport.camera = cam
+            if fit:
+                cam = viewport.camera
+                cam.isSmoothTransition = False
+                cam.isFitView = True
+                viewport.camera = cam
+            if moved:
+                viewport.refresh()
+            if not viewport.saveAsImageFile(file_path, width, height):
+                raise RuntimeError(f"Fusion could not write {file_path}")
+        finally:
+            if moved:
+                original.isSmoothTransition = False
+                viewport.camera = original
+                viewport.refresh()
+
+        with open(file_path, "rb") as f:
+            image = base64.b64encode(f.read()).decode("ascii")
+        return {
+            "file_path": file_path,
+            "view": view,
+            "fit": fit,
+            "width": width,
+            "height": height,
+            "mime_type": "image/png",
+            "image_base64": image,
         }
 
     def boolean_operation(self, target_body: str, tool_body: str,
