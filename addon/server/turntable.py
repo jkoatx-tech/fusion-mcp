@@ -12,11 +12,17 @@ import subprocess
 import sys
 
 # GUI apps on macOS don't inherit the shell PATH, so Homebrew's ffmpeg
-# is invisible to shutil.which inside Fusion.
+# is invisible to shutil.which inside Fusion. On Windows, Fusion keeps the
+# PATH it started with, so an ffmpeg installed while Fusion runs (winget,
+# Chocolatey, Scoop) is invisible until a restart. Entries are passed
+# through os.path.expandvars at lookup time.
 _FFMPEG_CANDIDATES = (
     "/opt/homebrew/bin/ffmpeg",
     "/usr/local/bin/ffmpeg",
     "/usr/bin/ffmpeg",
+    r"%LOCALAPPDATA%\Microsoft\WinGet\Links\ffmpeg.exe",
+    r"%ProgramData%\chocolatey\bin\ffmpeg.exe",
+    r"%USERPROFILE%\scoop\shims\ffmpeg.exe",
 )
 
 FRAME_PATTERN = "frame_%04d.png"
@@ -66,6 +72,7 @@ def find_ffmpeg(explicit: str | None = None) -> str | None:
     if found:
         return found
     for candidate in _FFMPEG_CANDIDATES:
+        candidate = os.path.expandvars(candidate)
         if os.path.isfile(candidate):
             return candidate
     return None

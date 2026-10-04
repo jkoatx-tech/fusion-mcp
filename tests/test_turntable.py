@@ -81,6 +81,15 @@ class TestFfmpeg:
                             ("/does/not/exist", str(binary)))
         assert turntable.find_ffmpeg() == str(binary)
 
+    def test_candidates_expand_env_vars(self, monkeypatch, tmp_path):
+        binary = tmp_path / "ffmpeg.exe"
+        binary.write_text("")
+        monkeypatch.setenv("FAKE_FFMPEG_DIR", str(tmp_path))
+        monkeypatch.setattr(turntable.shutil, "which", lambda _n: None)
+        monkeypatch.setattr(turntable, "_FFMPEG_CANDIDATES",
+                            (os.path.join("$FAKE_FFMPEG_DIR", "ffmpeg.exe"),))
+        assert turntable.find_ffmpeg() == str(binary)
+
     def test_mp4_args(self):
         args = turntable.ffmpeg_args("ffmpeg", "/f", 30, "mp4", "/o.mp4")
         assert args[:2] == ["ffmpeg", "-y"]
