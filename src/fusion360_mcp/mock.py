@@ -776,6 +776,73 @@ def _cam_get_operation_info(p: dict) -> dict:
     }
 
 
+# ── svg import / viewport ────────────────────────────────────────────
+
+# 1×1 transparent PNG
+_MOCK_PNG = ("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhf"
+             "DwAChwGA60e6kgAAAABJRU5ErkJggg==")
+
+
+def _import_svg(p: dict) -> dict:
+    scale = p.get("scale", 1.0)
+    width = p.get("target_width", 5.0 * scale)
+    x, y = p.get("x", 0), p.get("y", 0)
+    return {
+        "imported": True,
+        "file_path": p.get("file_path", ""),
+        "sketch_name": "Sketch_mock_svg",
+        "plane": p.get("plane", "xy"),
+        "z_offset": p.get("z_offset"),
+        "scale": scale,
+        "unit_scale": 1.0,
+        "curve_count": 12,
+        "profile_count": 3,
+        "bounding_box": {
+            "min": [x, y, 0],
+            "max": [x + width, y + width / 2, 0],
+            "size": [width, width / 2],
+        },
+    }
+
+
+def _capture_viewport(p: dict) -> dict:
+    view = p.get("view", "current")
+    return {
+        "file_path": p.get("file_path", "/tmp/fusion_mcp_capture.png"),
+        "view": view,
+        "fit": p.get("fit", view != "current"),
+        "width": p.get("width", 1280),
+        "height": p.get("height", 720),
+        "mime_type": "image/png",
+        "image_base64": _MOCK_PNG,
+    }
+
+
+def _capture_turntable(p: dict) -> dict:
+    fmt = p.get("format", "mp4")
+    frames, fps = p.get("frames", 72), p.get("fps", 24)
+    default_out = "~/Desktop/Untitled_turntable"
+    out = p.get("output_path",
+                default_out if fmt == "frames" else f"{default_out}.{fmt}")
+    keep = p.get("keep_frames", False)
+    return {
+        "output_path": out,
+        "format": fmt,
+        "frames": frames,
+        "fps": fps,
+        "duration_s": round(frames / fps, 2),
+        "degrees": p.get("degrees", 360),
+        "view": p.get("view", "iso"),
+        "width": p.get("width", 1280),
+        "height": p.get("height", 720),
+        "frames_dir": out if fmt == "frames"
+        else ("/tmp/fusion_mcp_turntable_mock" if keep else None),
+        "render_seconds": 0.0,
+        "mime_type": "image/png",
+        "image_base64": _MOCK_PNG,
+    }
+
+
 # ── default fallback ─────────────────────────────────────────────────
 
 def _default_mock(p: dict) -> dict:
@@ -820,6 +887,9 @@ _DISPATCH: dict[str, Any] = {
     "export_f3d": _export_f3d,
     "export": _export,
     "import_mesh": _import_mesh,
+    "import_svg": _import_svg,
+    "capture_viewport": _capture_viewport,
+    "capture_turntable": _capture_turntable,
     "create_box_parametric": _create_box_parametric,
     "get_parameters": _get_parameters,
     "create_parameter": _create_parameter,

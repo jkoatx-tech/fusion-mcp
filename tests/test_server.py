@@ -96,7 +96,8 @@ class TestToolAnnotations:
             "check_interference", "ping",
             "cam_list_setups", "cam_list_operations",
             "cam_get_operation_info",
-            "get_design_type",
+            "get_design_type", "capture_viewport",
+            "capture_turntable",
         }
         for t in TOOLS:
             ann = t["annotations"]

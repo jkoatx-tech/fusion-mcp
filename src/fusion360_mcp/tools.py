@@ -334,7 +334,9 @@ TOOLS: list[dict] = [
         "description": (
             "Run arbitrary Python in Fusion 360. "
             "The last expression's value is returned (REPL-style). "
-            "Pre-defined names: app, ui, design, component, adsk, math."
+            "Pre-defined names: app, ui, design, component, adsk, math. "
+            "Also runs without an open design (start page); design and "
+            "component are None then, so the code can open or create one."
         ),
         "inputSchema": {
             "type": "object",
@@ -2203,6 +2205,177 @@ TOOLS: list[dict] = [
             "properties": {},
         },
     },
+    {
+        "name": "import_svg",
+        "title": "Import SVG",
+        "description": (
+            "Import an SVG file (on the Fusion machine) into a new sketch, "
+            "e.g. logos, labels or panel cut-outs. Closed paths become "
+            "profiles that can be extruded. A root width with an absolute "
+            "unit (mm, cm, in, pt) plus a viewBox is imported at that size; "
+            "without them SVG units count as 96-dpi pixels. The drawing "
+            "reads upright and unmirrored in the plane's standard view "
+            "(xy from top, xz from front, yz from right). Returns sketch "
+            "name, profile count, the applied unit_scale, the SVG's size "
+            "and its bounding box in model cm. Use target_width to scale "
+            "the result to an exact width."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "required": ["file_path"],
+            "properties": {
+                "file_path": {
+                    "type": "string",
+                    "description": "Absolute path to the .svg file",
+                },
+                "plane": {
+                    "type": "string",
+                    "enum": ["xy", "yz", "xz"],
+                    "default": "xy",
+                },
+                "z_offset": {
+                    "type": "number",
+                    "description": "Offset distance from the plane (cm)",
+                },
+                "x": {
+                    "type": "number", "default": 0,
+                    "description": "X of the SVG's top-left corner (sketch, cm)",
+                },
+                "y": {
+                    "type": "number", "default": 0,
+                    "description": "Y of the SVG's top-left corner (sketch, cm)",
+                },
+                "scale": {
+                    "type": "number", "default": 1,
+                    "exclusiveMinimum": 0,
+                    "description": "Scale factor applied on import",
+                },
+                "target_width": {
+                    "type": "number",
+                    "exclusiveMinimum": 0,
+                    "description": (
+                        "Desired sketch width in cm; overrides scale "
+                        "by measuring and re-importing"
+                    ),
+                },
+            },
+        },
+    },
+    # ── viewport ────────────────────────────────────────────────────────
+    {
+        "name": "capture_viewport",
+        "title": "Capture Viewport",
+        "description": (
+            "Render the Fusion viewport to a PNG and return it as an image, "
+            "so you can check visually what you modelled. Optionally switch "
+            "to a standard view first; the user's camera is restored "
+            "afterwards and the design is not changed."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "view": {
+                    "type": "string",
+                    "enum": ["current", "front", "back", "top", "bottom",
+                             "left", "right", "iso", "iso_top_left"],
+                    "default": "current",
+                },
+                "width": {
+                    "type": "integer", "default": 1280,
+                    "minimum": 16, "maximum": 4096,
+                },
+                "height": {
+                    "type": "integer", "default": 720,
+                    "minimum": 16, "maximum": 4096,
+                },
+                "fit": {
+                    "type": "boolean",
+                    "description": (
+                        "Zoom to fit all geometry (default: true for a "
+                        "named view, false for 'current')"
+                    ),
+                },
+                "file_path": {
+                    "type": "string",
+                    "description": (
+                        "Where to keep the PNG on the Fusion machine "
+                        "(default: temp dir, overwritten each call)"
+                    ),
+                },
+            },
+        },
+    },
+    {
+        "name": "capture_turntable",
+        "title": "Capture Turntable",
+        "description": (
+            "Render a turntable video of the design: the camera orbits the "
+            "model about its up axis, one PNG per step, encoded with ffmpeg "
+            "to mp4 or gif on the Fusion machine (format 'frames' keeps the "
+            "PNGs only). Returns the output path and the first frame as a "
+            "preview image — check the framing on a short, low-res run "
+            "first. Fusion is blocked while it renders (up to 10 min). The "
+            "camera is restored and the design is not changed."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "frames": {
+                    "type": "integer", "default": 72,
+                    "minimum": 2, "maximum": 720,
+                },
+                "degrees": {
+                    "type": "number", "default": 360,
+                    "description": (
+                        "Total rotation; negative turns the other way. "
+                        "A multiple of 360 loops seamlessly."
+                    ),
+                },
+                "view": {
+                    "type": "string",
+                    "enum": ["current", "front", "back", "top", "bottom",
+                             "left", "right", "iso", "iso_top_left"],
+                    "default": "iso",
+                    "description": "Start view, fitted to all geometry",
+                },
+                "fps": {
+                    "type": "integer", "default": 24,
+                    "minimum": 1, "maximum": 60,
+                },
+                "width": {
+                    "type": "integer", "default": 1280,
+                    "minimum": 16, "maximum": 3840,
+                },
+                "height": {
+                    "type": "integer", "default": 720,
+                    "minimum": 16, "maximum": 3840,
+                },
+                "format": {
+                    "type": "string",
+                    "enum": ["mp4", "gif", "frames"],
+                    "default": "mp4",
+                },
+                "output_path": {
+                    "type": "string",
+                    "description": (
+                        "Video file, or directory for 'frames' "
+                        "(default: ~/Desktop/<design>_turntable[.ext])"
+                    ),
+                },
+                "ffmpeg_path": {
+                    "type": "string",
+                    "description": (
+                        "ffmpeg binary (default: PATH, then Homebrew "
+                        "and /usr locations)"
+                    ),
+                },
+                "keep_frames": {
+                    "type": "boolean", "default": False,
+                    "description": "Keep the PNG frames after encoding",
+                },
+            },
+        },
+    },
     # ── design type safety ──────────────────────────────────────────────
     {
         "name": "get_design_type",
@@ -2250,7 +2423,7 @@ _READ_ONLY = {
     "check_interference", "ping",
     "cam_list_setups", "cam_list_operations",
     "cam_get_operation_info",
-    "get_design_type",
+    "get_design_type", "capture_viewport", "capture_turntable",
 }
 _DESTRUCTIVE = {"delete_all", "delete_parameter"}
 _IDEMPOTENT = {
@@ -2263,8 +2436,13 @@ _IDEMPOTENT = {
     "cam_list_setups", "cam_list_operations",
     "cam_get_operation_info",
     "get_design_type", "set_design_type",
-    "rename_body",
+    "rename_body", "capture_viewport", "capture_turntable",
 }
+
+# Socket timeouts (s) for commands that run longer than the default 30 s.
+# Slightly above the add-in's own limits (_COMMAND_TIMEOUTS in
+# addon/server/socket_server.py) so its timeout error arrives first.
+COMMAND_TIMEOUTS = {"capture_turntable": 610.0}
 
 for _t in TOOLS:
     _name = _t["name"]

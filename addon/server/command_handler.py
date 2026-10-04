@@ -7,9 +7,12 @@ is safe.
 """
 
 import ast
+import base64
 import io
 import math
 import os
+import shutil
+import tempfile
 import time
 import traceback
 from contextlib import redirect_stdout
@@ -18,7 +21,7 @@ import adsk.cam
 import adsk.core
 import adsk.fusion
 
-from . import get_logger
+from . import get_logger, svg_units, turntable
 
 log = get_logger("handler")
 
@@ -87,6 +90,9 @@ class CommandHandler:
                 "export_f3d":           self.export_f3d,
                 "export":               self.export,
                 "import_mesh":          self.import_mesh,
+                "import_svg":           self.import_svg,
+                "capture_viewport":     self.capture_viewport,
+                "capture_turntable":    self.capture_turntable,
                 "create_box_parametric": self.create_box_parametric,
                 "boolean_operation":    self.boolean_operation,
                 "delete_all":           self.delete_all,
@@ -464,20 +470,18 @@ class CommandHandler:
     # Sketch
     # ------------------------------------------------------------------
 
+    def _sketch_plane(self, plane: str, z_offset: float = None):
+        """Origin plane, or a new construction plane offset from it."""
+        if z_offset is None or z_offset == 0:
+            return self._construction_plane(plane)
+        planes = self._root().constructionPlanes
+        plane_input = planes.createInput()
+        offset_val = adsk.core.ValueInput.createByReal(z_offset)
+        plane_input.setByOffset(self._construction_plane(plane), offset_val)
+        return planes.add(plane_input)
+
     def create_sketch(self, plane: str = "xy", z_offset: float = None):
-        root = self._root()
-
-        if z_offset is not None and z_offset != 0:
-            # Create an offset construction plane
-            planes = root.constructionPlanes
-            plane_input = planes.createInput()
-            offset_val = adsk.core.ValueInput.createByReal(z_offset)
-            plane_input.setByOffset(self._construction_plane(plane), offset_val)
-            cp = planes.add(plane_input)
-            sketch = root.sketches.add(cp)
-        else:
-            sketch = root.sketches.add(self._construction_plane(plane))
-
+        sketch = self._root().sketches.add(self._sketch_plane(plane, z_offset))
         return {"sketch_name": sketch.name, "plane": plane,
                 "z_offset": z_offset}
 
@@ -1271,6 +1275,371 @@ class CommandHandler:
                 ],
             },
         }
+
+    def import_svg(self, file_path: str, plane: str = "xy",
+                   z_offset: float = None, x: float = 0, y: float = 0,
+                   scale: float = 1.0, target_width: float = None):
+        """Import an SVG into a new sketch. Position and size in cm.
+
+        With *target_width* the SVG is imported once to measure it, then
+        re-imported with the scale that gives that width.
+        """
+        if not os.path.exists(file_path):
+            raise RuntimeError(f"SVG file not found: {file_path}")
+        if not file_path.lower().endswith(".svg"):
+            raise RuntimeError(f"Not an .svg file: {file_path}")
+        if scale <= 0:
+            raise RuntimeError("scale must be > 0")
+        if target_width is not None and target_width <= 0:
+            raise RuntimeError("target_width must be > 0")
+
+        sketches = self._root().sketches
+        planar = self._sketch_plane(plane, z_offset)
+
+        # Fusion reads SVG user units as 96-dpi pixels and ignores width/
+        # height units; scale so that e.g. width="100mm" arrives 10 cm wide.
+        with open(file_path, encoding="utf-8", errors="replace") as f:
+            units = svg_units.unit_scale(f.read())
+
+        def _import(s):
+            sketch = sketches.add(planar)
+            if not sketch.importSVG(file_path, x, y, s):
+                sketch.deleteMe()
+                raise RuntimeError(f"Fusion could not import {file_path}")
+            if sketch.sketchCurves.count == 0:
+                sketch.deleteMe()
+                raise RuntimeError(f"SVG contains no importable curves: "
+                                   f"{file_path}")
+            return sketch
+
+        scale = scale * units
+        sketch = _import(scale)
+        if target_width is not None:
+            bb = sketch.boundingBox
+            width = bb.maxPoint.x - bb.minPoint.x
+            if width <= 0:
+                raise RuntimeError("Imported SVG has zero width")
+            scale = scale * target_width / width
+            sketch.deleteMe()
+            sketch = _import(scale)
+
+        bb = sketch.boundingBox
+        size = [bb.maxPoint.x - bb.minPoint.x, bb.maxPoint.y - bb.minPoint.y]
+        self._orient_svg(sketch, plane, x, y)
+        return {
+            "imported": True,
+            "file_path": file_path,
+            "sketch_name": sketch.name,
+            "plane": plane,
+            "z_offset": z_offset,
+            "scale": scale,
+            "unit_scale": units,
+            "curve_count": sketch.sketchCurves.count,
+            "profile_count": sketch.profiles.count,
+            "bounding_box": {**self._sketch_model_bbox(sketch), "size": size},
+        }
+
+    # Model directions of the SVG's +x (right) and +y (down) per plane, so
+    # the drawing reads upright and unmirrored in the plane's standard view
+    # (Z-up: xy from top, xz from front, yz from right). Sketch.importSVG
+    # always maps SVG x to sketch +x and SVG y to sketch -y, which left it
+    # mirrored on xz and turned 90 degrees on yz.
+    _SVG_AXES = {
+        "xy": ((1, 0, 0), (0, -1, 0)),
+        "xz": ((1, 0, 0), (0, 0, -1)),
+        "yz": ((0, 1, 0), (0, 0, -1)),
+    }
+    # Y-up: the same physical planes (ground is xz, front is xy), with
+    # directions converted (x, y, z) -> (x, z, -y). Derived, not yet run.
+    _SVG_AXES_Y_UP = {
+        "xy": ((1, 0, 0), (0, -1, 0)),
+        "xz": ((1, 0, 0), (0, 0, 1)),
+        "yz": ((0, 0, -1), (0, -1, 0)),
+    }
+
+    def _orient_svg(self, sketch, plane: str, x: float, y: float):
+        """Turn/mirror the imported curves about the anchor (x, y)."""
+        axes = self._SVG_AXES_Y_UP if self._y_up() else self._SVG_AXES
+        right, down = axes[plane]
+        o = sketch.modelToSketchSpace(adsk.core.Point3D.create(0, 0, 0))
+
+        def to_sketch(v):
+            p = sketch.modelToSketchSpace(adsk.core.Point3D.create(*v))
+            return (round(p.x - o.x, 9), round(p.y - o.y, 9))
+
+        r, d = to_sketch(right), to_sketch(down)
+        # SVG x is at sketch +x and SVG y at sketch -y; map them to r and d
+        m00, m01, m10, m11 = r[0], -d[0], r[1], -d[1]
+        if (m00, m01, m10, m11) == (1, 0, 0, 1):
+            return
+        tx = x - (m00 * x + m01 * y)
+        ty = y - (m10 * x + m11 * y)
+
+        # Imported curves and their points are fixed; move() silently does
+        # nothing on fixed geometry, so release them for the move.
+        entities = [sketch.sketchCurves.item(i)
+                    for i in range(sketch.sketchCurves.count)]
+        entities += [p for p in (sketch.sketchPoints.item(i)
+                                 for i in range(sketch.sketchPoints.count))
+                     if p != sketch.originPoint]
+        coll = adsk.core.ObjectCollection.create()
+        for e in entities:
+            e.isFixed = False
+            coll.add(e)
+        matrix = adsk.core.Matrix3D.create()
+        matrix.setWithArray([m00, m01, 0, tx,
+                             m10, m11, 0, ty,
+                             0, 0, 1, 0,
+                             0, 0, 0, 1])
+        sketch.move(coll, matrix)
+        for e in entities:
+            e.isFixed = True
+
+    @staticmethod
+    def _sketch_model_bbox(sketch) -> dict:
+        pts = []
+        for i in range(sketch.sketchCurves.count):
+            bb = sketch.sketchCurves.item(i).boundingBox
+            pts += [sketch.sketchToModelSpace(bb.minPoint),
+                    sketch.sketchToModelSpace(bb.maxPoint)]
+        return {
+            "min": [min(getattr(p, a) for p in pts) for a in "xyz"],
+            "max": [max(getattr(p, a) for p in pts) for a in "xyz"],
+        }
+
+    # Eye direction (from target towards eye) and up vector per view, for a
+    # Z-up design. Setting camera.viewOrientation instead proved unreliable
+    # (Fusion 2705): the orientation was applied in one run and silently
+    # ignored in the next, so the views are built from vectors.
+    _VIEWS = {
+        "front": ((0, -1, 0), (0, 0, 1)),
+        "back": ((0, 1, 0), (0, 0, 1)),
+        "top": ((0, 0, 1), (0, 1, 0)),
+        "bottom": ((0, 0, -1), (0, -1, 0)),
+        "left": ((-1, 0, 0), (0, 0, 1)),
+        "right": ((1, 0, 0), (0, 0, 1)),
+        "iso": ((1, -1, 1), (0, 0, 1)),
+        "iso_top_left": ((-1, -1, 1), (0, 0, 1)),
+    }
+    # Room around the geometry after a fit, as a factor on viewExtents
+    _FIT_MARGIN = 1.15
+
+    def capture_viewport(self, view: str = "current", width: int = 1280,
+                         height: int = 720, fit: bool = None,
+                         file_path: str = None):
+        """Render the active viewport to PNG and return it base64-encoded.
+
+        The camera is restored afterwards, so the user's view is unchanged.
+        *fit* defaults to True for a named view, False for "current".
+        """
+        if view != "current" and view not in self._VIEWS:
+            raise RuntimeError(
+                f"Unknown view '{view}'. Expected: current, "
+                f"{', '.join(self._VIEWS)}")
+        if not (16 <= width <= 4096 and 16 <= height <= 4096):
+            raise RuntimeError("width and height must be between 16 and 4096")
+        if fit is None:
+            fit = view != "current"
+
+        if file_path is None:
+            file_path = os.path.join(tempfile.gettempdir(),
+                                     "fusion_mcp_capture.png")
+        os.makedirs(os.path.dirname(os.path.abspath(file_path)),
+                    exist_ok=True)
+
+        viewport = self._viewport()
+        original = viewport.camera
+        moved = view != "current" or fit
+        try:
+            self._apply_view(viewport, view, fit)
+            self._save_frame(viewport, file_path, width, height)
+        finally:
+            if moved:
+                self._restore_camera(viewport, original)
+
+        return {
+            "file_path": file_path,
+            "view": view,
+            "fit": fit,
+            "width": width,
+            "height": height,
+            "mime_type": "image/png",
+            "image_base64": self._read_base64(file_path),
+        }
+
+    def capture_turntable(self, frames: int = 72, degrees: float = 360,
+                          view: str = "iso", fps: int = 24,
+                          width: int = 1280, height: int = 720,
+                          format: str = "mp4", output_path: str = None,
+                          ffmpeg_path: str = None,
+                          keep_frames: bool = False):
+        """Orbit the camera around the model and render a turntable video.
+
+        Starts from *view* (fitted), rotates about the camera's up axis
+        through its target, saves one PNG per step and encodes them with
+        ffmpeg (mp4/gif). ``format="frames"`` skips encoding. The camera
+        is restored and the design is not changed.
+        """
+        if view != "current" and view not in self._VIEWS:
+            raise RuntimeError(
+                f"Unknown view '{view}'. Expected: current, "
+                f"{', '.join(self._VIEWS)}")
+        if not 2 <= frames <= 720:
+            raise RuntimeError("frames must be between 2 and 720")
+        if not 1 <= fps <= 60:
+            raise RuntimeError("fps must be between 1 and 60")
+        if not (16 <= width <= 3840 and 16 <= height <= 3840):
+            raise RuntimeError("width and height must be between 16 and 3840")
+        if format not in ("mp4", "gif", "frames"):
+            raise RuntimeError(
+                f"Unknown format '{format}' — use mp4, gif or frames")
+        angles = turntable.orbit_angles(frames, degrees)
+
+        ffmpeg = None
+        if format != "frames":
+            ffmpeg = turntable.find_ffmpeg(ffmpeg_path)
+            if ffmpeg is None:
+                raise RuntimeError(
+                    "ffmpeg not found — install it, pass ffmpeg_path, "
+                    "or use format 'frames'")
+
+        if output_path is None:
+            desktop = os.path.join(os.path.expanduser("~"), "Desktop")
+            name = f"{self._design().parentDocument.name}_turntable"
+            output_path = os.path.join(
+                desktop, name if format == "frames" else f"{name}.{format}")
+
+        if format == "frames":
+            frames_dir = output_path
+            os.makedirs(frames_dir, exist_ok=True)
+        else:
+            os.makedirs(os.path.dirname(os.path.abspath(output_path)),
+                        exist_ok=True)
+            frames_dir = tempfile.mkdtemp(prefix="fusion_mcp_turntable_")
+
+        viewport = self._viewport()
+        original = viewport.camera
+        t0 = time.monotonic()
+        try:
+            self._apply_view(viewport, view, fit=True)
+            # The fit only covers the start angle. Size the view by the
+            # bounding-box diagonal so no angle of the orbit crops the model.
+            bbox = self._root().boundingBox
+            if bbox is not None:
+                diagonal = bbox.minPoint.distanceTo(bbox.maxPoint)
+                cam = viewport.camera
+                if cam.viewExtents < diagonal * self._FIT_MARGIN:
+                    cam.isSmoothTransition = False
+                    cam.viewExtents = diagonal * self._FIT_MARGIN
+                    viewport.camera = cam
+            start = viewport.camera
+            eye = (start.eye.x, start.eye.y, start.eye.z)
+            target = (start.target.x, start.target.y, start.target.z)
+            up = (start.upVector.x, start.upVector.y, start.upVector.z)
+
+            for i, angle in enumerate(angles):
+                cam = viewport.camera
+                cam.isSmoothTransition = False
+                cam.eye = adsk.core.Point3D.create(
+                    *turntable.rotate_about_axis(eye, target, up, angle))
+                cam.target = adsk.core.Point3D.create(*target)
+                cam.upVector = adsk.core.Vector3D.create(*up)
+                viewport.camera = cam
+                viewport.refresh()
+                self._save_frame(
+                    viewport,
+                    os.path.join(frames_dir, turntable.FRAME_PATTERN % i),
+                    width, height)
+        finally:
+            self._restore_camera(viewport, original)
+        render_seconds = time.monotonic() - t0
+
+        preview = self._read_base64(
+            os.path.join(frames_dir, turntable.FRAME_PATTERN % 0))
+
+        if ffmpeg is not None:
+            turntable.encode(turntable.ffmpeg_args(
+                ffmpeg, frames_dir, fps, format, output_path))
+            if not keep_frames:
+                shutil.rmtree(frames_dir, ignore_errors=True)
+
+        return {
+            "output_path": output_path,
+            "format": format,
+            "frames": frames,
+            "fps": fps,
+            "duration_s": round(frames / fps, 2),
+            "degrees": degrees,
+            "view": view,
+            "width": width,
+            "height": height,
+            "frames_dir": frames_dir if (keep_frames or ffmpeg is None)
+            else None,
+            "render_seconds": round(render_seconds, 1),
+            "mime_type": "image/png",
+            "image_base64": preview,
+        }
+
+    # -- viewport helpers ------------------------------------------------
+
+    def _viewport(self):
+        viewport = self.app.activeViewport
+        if viewport is None:
+            raise RuntimeError("No active viewport")
+        return viewport
+
+    def _y_up(self) -> bool:
+        try:
+            orientation = (self.app.preferences.generalPreferences
+                           .defaultModelingOrientation)
+            return orientation == (adsk.core.DefaultModelingOrientations
+                                   .YUpModelingOrientation)
+        except Exception:
+            return False
+
+    def _apply_view(self, viewport, view: str, fit: bool):
+        if view != "current":
+            direction, up = self._VIEWS[view]
+            if self._y_up():
+                # Z-up (x, y, z) is (x, z, -y) in a Y-up design
+                direction = (direction[0], direction[2], -direction[1])
+                up = (up[0], up[2], -up[1])
+            cam = viewport.camera
+            cam.isSmoothTransition = False
+            t = cam.target
+            dist = max(cam.eye.distanceTo(t), 1.0)
+            norm = math.sqrt(sum(c * c for c in direction))
+            cam.eye = adsk.core.Point3D.create(
+                *(p + c / norm * dist for p, c in zip((t.x, t.y, t.z),
+                                                      direction)))
+            cam.upVector = adsk.core.Vector3D.create(*up)
+            viewport.camera = cam
+        if fit:
+            # camera.isFitView = True is ignored by Fusion; viewport.fit()
+            # works but leaves no margin.
+            viewport.fit()
+            cam = viewport.camera
+            cam.isSmoothTransition = False
+            cam.viewExtents = cam.viewExtents * self._FIT_MARGIN
+            viewport.camera = cam
+        if view != "current" or fit:
+            viewport.refresh()
+
+    @staticmethod
+    def _save_frame(viewport, path: str, width: int, height: int):
+        if not viewport.saveAsImageFile(path, width, height):
+            raise RuntimeError(f"Fusion could not write {path}")
+
+    @staticmethod
+    def _restore_camera(viewport, original):
+        original.isSmoothTransition = False
+        viewport.camera = original
+        viewport.refresh()
+
+    @staticmethod
+    def _read_base64(path: str) -> str:
+        with open(path, "rb") as f:
+            return base64.b64encode(f.read()).decode("ascii")
 
     def boolean_operation(self, target_body: str, tool_body: str,
                           operation: str = "join"):
@@ -2285,15 +2654,19 @@ class CommandHandler:
     # ------------------------------------------------------------------
 
     def execute_code(self, code: str):
-        design = self._design()
-        type_before = design.designType
+        # Run even without an open design (start page): only then can the
+        # code itself open or create a document. design and component are
+        # None in that case.
+        product = self.app.activeProduct
+        design = adsk.fusion.Design.cast(product) if product else None
+        type_before = design.designType if design else None
 
         ns = {
             "adsk": adsk,
             "app": self.app,
             "ui": self.ui,
             "design": design,
-            "component": self._root(),
+            "component": design.rootComponent if design else None,
             "math": math,
         }
 
@@ -2322,10 +2695,16 @@ class CommandHandler:
         output = buf.getvalue()
         result = last_expr_value if last_expr_value is not None else output
 
-        # Warn if design type changed during execution
-        type_after = design.designType
+        # Warn if design type changed during execution. If the code opened
+        # another document, the old design may be gone; compare only while
+        # it is still the same, valid design.
+        try:
+            type_after = (design.designType if (design and design.isValid)
+                          else type_before)
+        except Exception:
+            type_after = type_before
         design_type_warning = None
-        if type_before != type_after:
+        if type_before is not None and type_before != type_after:
             design_type_warning = (
                 f"WARNING: Design type changed from "
                 f"{'parametric' if type_before == 1 else 'direct'} to "

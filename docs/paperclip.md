@@ -34,7 +34,7 @@ The add-in accepts multiple clients, each on its own thread (`addon/server/socke
 Paperclip coordinates *work*, not *resources*; it will happily run two agents against the same socket in parallel. So:
 
 - One agent — the CAD engineer — gets write access.
-- Every other agent that touches Fusion gets only the read-only tools (the `_READ_ONLY` set in `src/fusion360_mcp/tools.py`: `ping`, `get_scene_info`, `get_object_info`, `get_bounding_box`, `list_components`, `get_parameters`, `get_physical_properties`, `measure_distance`, `measure_angle`, `check_interference`, `get_design_type`, `cam_list_setups`, `cam_list_operations`, `cam_get_operation_info`).
+- Every other agent that touches Fusion gets only the read-only tools (the `_READ_ONLY` set in `src/fusion360_mcp/tools.py`: `ping`, `get_scene_info`, `get_object_info`, `get_bounding_box`, `list_components`, `get_parameters`, `get_physical_properties`, `measure_distance`, `measure_angle`, `check_interference`, `get_design_type`, `capture_viewport`, `capture_turntable`, `cam_list_setups`, `cam_list_operations`, `cam_get_operation_info`).
 - Treat the Paperclip task assigned to the CAD engineer as the lock. Reviewers work on the result after that task is done, not alongside it.
 
 Read-only calls from a reviewer while the engineer is mid-task are harmless to the design but may see a half-built state.

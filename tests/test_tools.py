@@ -79,7 +79,9 @@ def test_expected_tools_present():
         # export
         "export_step", "export_f3d", "export",
         # import
-        "import_mesh",
+        "import_mesh", "import_svg",
+        # viewport
+        "capture_viewport", "capture_turntable",
         # parameters
         "get_parameters", "create_parameter", "set_parameter", "delete_parameter",
         # sketch constraints & dimensions

@@ -35,6 +35,7 @@ Two components:
 - [uv](https://docs.astral.sh/uv/) (Python package manager)
 - Autodesk Fusion 360
 - An MCP-compatible client (Claude Code, OpenCode, Codex, Cursor, etc.)
+- Optional: [FFmpeg](https://ffmpeg.org/) on the Fusion machine for `capture_turntable` videos (`brew install ffmpeg` / `winget install ffmpeg`)
 
 ## Installation
 
@@ -142,7 +143,7 @@ Call the `ping` tool from your client. If it returns `{"pong": true}`, everythin
 2. Stop the add-in in Fusion (Shift+S → Add-Ins → Fusion360MCP → Stop)
 3. Delete the add-in folder from Fusion's AddIns directory
 
-## Available Tools (87)
+## Available Tools (90)
 
 ### Scene & Query
 | Tool | Description |
@@ -152,6 +153,8 @@ Call the `ping` tool from your client. If it returns `{"pong": true}`, everythin
 | `get_object_info` | Detailed info about a named body or sketch |
 | `list_components` | List all components in the design |
 | `get_bounding_box` | Axis-aligned bounding box (min/max/size/center in cm); unions bodies for components |
+| `capture_viewport` | Render the viewport (current or standard view) to PNG and return it as an image; camera is restored |
+| `capture_turntable` | Orbit the camera around the model and encode a turntable video (mp4/gif via ffmpeg, or PNG frames); returns a preview frame |
 
 ### Design Type Safety
 | Tool | Description |
@@ -274,6 +277,7 @@ Call the `ping` tool from your client. If it returns `{"pong": true}`, everythin
 | Tool | Description |
 |------|-------------|
 | `import_mesh` | Import STL/OBJ/3MF as a mesh body (unit-aware: mm/cm/m/in/ft) |
+| `import_svg` | Import an SVG into a new sketch (position, scale or exact `target_width`) |
 | `export` | Unified dispatcher around the three below; infers format from file extension |
 | `export_stl` | Export body as STL (supports bodies inside components) |
 | `export_step` | Export body as STEP (supports bodies inside components) |
@@ -309,7 +313,7 @@ Call the `ping` tool from your client. If it returns `{"pong": true}`, everythin
 
 ```bash
 uv sync --dev       # install deps
-uv run pytest -v    # run tests (273 tests)
+uv run pytest -v    # run tests (302 tests)
 uv run ruff check   # lint
 ```
 

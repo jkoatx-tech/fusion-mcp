@@ -10,6 +10,13 @@ LOG_PATH = os.path.join(os.path.expanduser("~"), "fusion360mcp.log")
 _logger = logging.getLogger("fusion360mcp")
 _logger.setLevel(logging.DEBUG)
 
+# Fusion re-imports this package on every add-in Stop/Run, but the logger
+# lives for the whole Fusion process. Drop the previous run's handlers,
+# or every line is written once more per restart.
+for _old in list(_logger.handlers):
+    _logger.removeHandler(_old)
+    _old.close()
+
 # File handler — rotates at 2 MB, keeps 3 backups
 _fh = RotatingFileHandler(LOG_PATH, maxBytes=2 * 1024 * 1024, backupCount=3)
 _fh.setLevel(logging.DEBUG)

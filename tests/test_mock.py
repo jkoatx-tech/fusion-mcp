@@ -64,6 +64,52 @@ class TestMockSceneQuery:
         assert "mesh_name" in result
         assert "bounding_box" in result
 
+    def test_import_svg(self):
+        result = mock_command("import_svg", {
+            "file_path": "/tmp/logo.svg", "plane": "xz", "x": 1, "y": 2,
+        })
+        assert result["imported"] is True
+        assert result["file_path"] == "/tmp/logo.svg"
+        assert result["plane"] == "xz"
+        assert result["profile_count"] > 0
+        assert result["bounding_box"]["min"][:2] == [1, 2]
+
+    def test_import_svg_target_width(self):
+        result = mock_command("import_svg", {
+            "file_path": "/tmp/logo.svg", "target_width": 8,
+        })
+        assert result["bounding_box"]["size"][0] == 8
+
+    def test_capture_viewport_defaults(self):
+        import base64
+        result = mock_command("capture_viewport", {})
+        assert result["view"] == "current"
+        assert result["fit"] is False
+        assert (result["width"], result["height"]) == (1280, 720)
+        assert result["mime_type"] == "image/png"
+        png = base64.b64decode(result["image_base64"])
+        assert png.startswith(b"\x89PNG")
+
+    def test_capture_viewport_named_view_fits(self):
+        result = mock_command("capture_viewport", {"view": "iso"})
+        assert result["view"] == "iso"
+        assert result["fit"] is True
+
+    def test_capture_turntable_defaults(self):
+        result = mock_command("capture_turntable", {})
+        assert result["format"] == "mp4"
+        assert result["output_path"].endswith("_turntable.mp4")
+        assert result["duration_s"] == 3.0
+        assert result["frames_dir"] is None
+        assert result["image_base64"]
+
+    def test_capture_turntable_frames_only(self):
+        result = mock_command("capture_turntable", {
+            "format": "frames", "output_path": "/tmp/tt", "frames": 10,
+        })
+        assert result["frames_dir"] == "/tmp/tt"
+        assert result["frames"] == 10
+
     def test_create_box_parametric_numeric(self):
         result = mock_command("create_box_parametric", {
             "length": 56, "width": 30, "height": 25,
