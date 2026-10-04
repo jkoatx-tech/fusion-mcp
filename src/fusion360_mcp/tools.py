@@ -2211,10 +2211,14 @@ TOOLS: list[dict] = [
         "description": (
             "Import an SVG file (on the Fusion machine) into a new sketch, "
             "e.g. logos, labels or panel cut-outs. Closed paths become "
-            "profiles that can be extruded. Returns sketch name, profile "
-            "count and bounding box in cm — check the size, since SVG "
-            "units do not always map 1:1. Use target_width to scale the "
-            "result to an exact width."
+            "profiles that can be extruded. A root width with an absolute "
+            "unit (mm, cm, in, pt) plus a viewBox is imported at that size; "
+            "without them SVG units count as 96-dpi pixels. The drawing "
+            "reads upright and unmirrored in the plane's standard view "
+            "(xy from top, xz from front, yz from right). Returns sketch "
+            "name, profile count, the applied unit_scale, the SVG's size "
+            "and its bounding box in model cm. Use target_width to scale "
+            "the result to an exact width."
         ),
         "inputSchema": {
             "type": "object",
@@ -2235,11 +2239,11 @@ TOOLS: list[dict] = [
                 },
                 "x": {
                     "type": "number", "default": 0,
-                    "description": "X position in the sketch (cm)",
+                    "description": "X of the SVG's top-left corner (sketch, cm)",
                 },
                 "y": {
                     "type": "number", "default": 0,
-                    "description": "Y position in the sketch (cm)",
+                    "description": "Y of the SVG's top-left corner (sketch, cm)",
                 },
                 "scale": {
                     "type": "number", "default": 1,

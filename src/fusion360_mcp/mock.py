@@ -794,6 +794,7 @@ def _import_svg(p: dict) -> dict:
         "plane": p.get("plane", "xy"),
         "z_offset": p.get("z_offset"),
         "scale": scale,
+        "unit_scale": 1.0,
         "curve_count": 12,
         "profile_count": 3,
         "bounding_box": {

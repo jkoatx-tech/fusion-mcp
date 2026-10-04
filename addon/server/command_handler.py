@@ -21,7 +21,7 @@ import adsk.cam
 import adsk.core
 import adsk.fusion
 
-from . import get_logger, turntable
+from . import get_logger, svg_units, turntable
 
 log = get_logger("handler")
 
@@ -1296,6 +1296,11 @@ class CommandHandler:
         sketches = self._root().sketches
         planar = self._sketch_plane(plane, z_offset)
 
+        # Fusion reads SVG user units as 96-dpi pixels and ignores width/
+        # height units; scale so that e.g. width="100mm" arrives 10 cm wide.
+        with open(file_path, encoding="utf-8", errors="replace") as f:
+            units = svg_units.unit_scale(f.read())
+
         def _import(s):
             sketch = sketches.add(planar)
             if not sketch.importSVG(file_path, x, y, s):
@@ -1307,6 +1312,7 @@ class CommandHandler:
                                    f"{file_path}")
             return sketch
 
+        scale = scale * units
         sketch = _import(scale)
         if target_width is not None:
             bb = sketch.boundingBox
@@ -1318,6 +1324,8 @@ class CommandHandler:
             sketch = _import(scale)
 
         bb = sketch.boundingBox
+        size = [bb.maxPoint.x - bb.minPoint.x, bb.maxPoint.y - bb.minPoint.y]
+        self._orient_svg(sketch, plane, x, y)
         return {
             "imported": True,
             "file_path": file_path,
@@ -1325,26 +1333,96 @@ class CommandHandler:
             "plane": plane,
             "z_offset": z_offset,
             "scale": scale,
+            "unit_scale": units,
             "curve_count": sketch.sketchCurves.count,
             "profile_count": sketch.profiles.count,
-            "bounding_box": {
-                **self._bbox_dict(bb),
-                "size": [bb.maxPoint.x - bb.minPoint.x,
-                         bb.maxPoint.y - bb.minPoint.y],
-            },
+            "bounding_box": {**self._sketch_model_bbox(sketch), "size": size},
         }
 
-    # Resolved lazily so a missing enum member can't break add-in import.
-    _VIEWS = {
-        "front": "FrontViewOrientation",
-        "back": "BackViewOrientation",
-        "top": "TopViewOrientation",
-        "bottom": "BottomViewOrientation",
-        "left": "LeftViewOrientation",
-        "right": "RightViewOrientation",
-        "iso": "IsoTopRightViewOrientation",
-        "iso_top_left": "IsoTopLeftViewOrientation",
+    # Model directions of the SVG's +x (right) and +y (down) per plane, so
+    # the drawing reads upright and unmirrored in the plane's standard view
+    # (Z-up: xy from top, xz from front, yz from right). Sketch.importSVG
+    # always maps SVG x to sketch +x and SVG y to sketch -y, which left it
+    # mirrored on xz and turned 90 degrees on yz.
+    _SVG_AXES = {
+        "xy": ((1, 0, 0), (0, -1, 0)),
+        "xz": ((1, 0, 0), (0, 0, -1)),
+        "yz": ((0, 1, 0), (0, 0, -1)),
     }
+    # Y-up: the same physical planes (ground is xz, front is xy), with
+    # directions converted (x, y, z) -> (x, z, -y). Derived, not yet run.
+    _SVG_AXES_Y_UP = {
+        "xy": ((1, 0, 0), (0, -1, 0)),
+        "xz": ((1, 0, 0), (0, 0, 1)),
+        "yz": ((0, 0, -1), (0, -1, 0)),
+    }
+
+    def _orient_svg(self, sketch, plane: str, x: float, y: float):
+        """Turn/mirror the imported curves about the anchor (x, y)."""
+        axes = self._SVG_AXES_Y_UP if self._y_up() else self._SVG_AXES
+        right, down = axes[plane]
+        o = sketch.modelToSketchSpace(adsk.core.Point3D.create(0, 0, 0))
+
+        def to_sketch(v):
+            p = sketch.modelToSketchSpace(adsk.core.Point3D.create(*v))
+            return (round(p.x - o.x, 9), round(p.y - o.y, 9))
+
+        r, d = to_sketch(right), to_sketch(down)
+        # SVG x is at sketch +x and SVG y at sketch -y; map them to r and d
+        m00, m01, m10, m11 = r[0], -d[0], r[1], -d[1]
+        if (m00, m01, m10, m11) == (1, 0, 0, 1):
+            return
+        tx = x - (m00 * x + m01 * y)
+        ty = y - (m10 * x + m11 * y)
+
+        # Imported curves and their points are fixed; move() silently does
+        # nothing on fixed geometry, so release them for the move.
+        entities = [sketch.sketchCurves.item(i)
+                    for i in range(sketch.sketchCurves.count)]
+        entities += [p for p in (sketch.sketchPoints.item(i)
+                                 for i in range(sketch.sketchPoints.count))
+                     if p != sketch.originPoint]
+        coll = adsk.core.ObjectCollection.create()
+        for e in entities:
+            e.isFixed = False
+            coll.add(e)
+        matrix = adsk.core.Matrix3D.create()
+        matrix.setWithArray([m00, m01, 0, tx,
+                             m10, m11, 0, ty,
+                             0, 0, 1, 0,
+                             0, 0, 0, 1])
+        sketch.move(coll, matrix)
+        for e in entities:
+            e.isFixed = True
+
+    @staticmethod
+    def _sketch_model_bbox(sketch) -> dict:
+        pts = []
+        for i in range(sketch.sketchCurves.count):
+            bb = sketch.sketchCurves.item(i).boundingBox
+            pts += [sketch.sketchToModelSpace(bb.minPoint),
+                    sketch.sketchToModelSpace(bb.maxPoint)]
+        return {
+            "min": [min(getattr(p, a) for p in pts) for a in "xyz"],
+            "max": [max(getattr(p, a) for p in pts) for a in "xyz"],
+        }
+
+    # Eye direction (from target towards eye) and up vector per view, for a
+    # Z-up design. Setting camera.viewOrientation instead proved unreliable
+    # (Fusion 2705): the orientation was applied in one run and silently
+    # ignored in the next, so the views are built from vectors.
+    _VIEWS = {
+        "front": ((0, -1, 0), (0, 0, 1)),
+        "back": ((0, 1, 0), (0, 0, 1)),
+        "top": ((0, 0, 1), (0, 1, 0)),
+        "bottom": ((0, 0, -1), (0, -1, 0)),
+        "left": ((-1, 0, 0), (0, 0, 1)),
+        "right": ((1, 0, 0), (0, 0, 1)),
+        "iso": ((1, -1, 1), (0, 0, 1)),
+        "iso_top_left": ((-1, -1, 1), (0, 0, 1)),
+    }
+    # Room around the geometry after a fit, as a factor on viewExtents
+    _FIT_MARGIN = 1.15
 
     def capture_viewport(self, view: str = "current", width: int = 1280,
                          height: int = 720, fit: bool = None,
@@ -1444,6 +1522,16 @@ class CommandHandler:
         t0 = time.monotonic()
         try:
             self._apply_view(viewport, view, fit=True)
+            # The fit only covers the start angle. Size the view by the
+            # bounding-box diagonal so no angle of the orbit crops the model.
+            bbox = self._root().boundingBox
+            if bbox is not None:
+                diagonal = bbox.minPoint.distanceTo(bbox.maxPoint)
+                cam = viewport.camera
+                if cam.viewExtents < diagonal * self._FIT_MARGIN:
+                    cam.isSmoothTransition = False
+                    cam.viewExtents = diagonal * self._FIT_MARGIN
+                    viewport.camera = cam
             start = viewport.camera
             eye = (start.eye.x, start.eye.y, start.eye.z)
             target = (start.target.x, start.target.y, start.target.z)
@@ -1500,17 +1588,39 @@ class CommandHandler:
             raise RuntimeError("No active viewport")
         return viewport
 
+    def _y_up(self) -> bool:
+        try:
+            orientation = (self.app.preferences.generalPreferences
+                           .defaultModelingOrientation)
+            return orientation == (adsk.core.DefaultModelingOrientations
+                                   .YUpModelingOrientation)
+        except Exception:
+            return False
+
     def _apply_view(self, viewport, view: str, fit: bool):
         if view != "current":
+            direction, up = self._VIEWS[view]
+            if self._y_up():
+                # Z-up (x, y, z) is (x, z, -y) in a Y-up design
+                direction = (direction[0], direction[2], -direction[1])
+                up = (up[0], up[2], -up[1])
             cam = viewport.camera
             cam.isSmoothTransition = False
-            cam.viewOrientation = getattr(adsk.core.ViewOrientations,
-                                          self._VIEWS[view])
+            t = cam.target
+            dist = max(cam.eye.distanceTo(t), 1.0)
+            norm = math.sqrt(sum(c * c for c in direction))
+            cam.eye = adsk.core.Point3D.create(
+                *(p + c / norm * dist for p, c in zip((t.x, t.y, t.z),
+                                                      direction)))
+            cam.upVector = adsk.core.Vector3D.create(*up)
             viewport.camera = cam
         if fit:
+            # camera.isFitView = True is ignored by Fusion; viewport.fit()
+            # works but leaves no margin.
+            viewport.fit()
             cam = viewport.camera
             cam.isSmoothTransition = False
-            cam.isFitView = True
+            cam.viewExtents = cam.viewExtents * self._FIT_MARGIN
             viewport.camera = cam
         if view != "current" or fit:
             viewport.refresh()
