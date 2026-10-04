@@ -334,7 +334,9 @@ TOOLS: list[dict] = [
         "description": (
             "Run arbitrary Python in Fusion 360. "
             "The last expression's value is returned (REPL-style). "
-            "Pre-defined names: app, ui, design, component, adsk, math."
+            "Pre-defined names: app, ui, design, component, adsk, math. "
+            "Also runs without an open design (start page); design and "
+            "component are None then, so the code can open or create one."
         ),
         "inputSchema": {
             "type": "object",

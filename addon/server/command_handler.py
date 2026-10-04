@@ -2544,15 +2544,19 @@ class CommandHandler:
     # ------------------------------------------------------------------
 
     def execute_code(self, code: str):
-        design = self._design()
-        type_before = design.designType
+        # Run even without an open design (start page): only then can the
+        # code itself open or create a document. design and component are
+        # None in that case.
+        product = self.app.activeProduct
+        design = adsk.fusion.Design.cast(product) if product else None
+        type_before = design.designType if design else None
 
         ns = {
             "adsk": adsk,
             "app": self.app,
             "ui": self.ui,
             "design": design,
-            "component": self._root(),
+            "component": design.rootComponent if design else None,
             "math": math,
         }
 
@@ -2581,10 +2585,16 @@ class CommandHandler:
         output = buf.getvalue()
         result = last_expr_value if last_expr_value is not None else output
 
-        # Warn if design type changed during execution
-        type_after = design.designType
+        # Warn if design type changed during execution. If the code opened
+        # another document, the old design may be gone; compare only while
+        # it is still the same, valid design.
+        try:
+            type_after = (design.designType if (design and design.isValid)
+                          else type_before)
+        except Exception:
+            type_after = type_before
         design_type_warning = None
-        if type_before != type_after:
+        if type_before is not None and type_before != type_after:
             design_type_warning = (
                 f"WARNING: Design type changed from "
                 f"{'parametric' if type_before == 1 else 'direct'} to "
